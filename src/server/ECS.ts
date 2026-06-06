@@ -13,7 +13,9 @@ export class Entity {
     return this;
   }
 
-  getComponent<T extends Component>(type: new (...args: any[]) => T): T | undefined {
+  getComponent<T extends Component>(
+    type: new (...args: any[]) => T,
+  ): T | undefined {
     return this.components.get(type) as T;
   }
 

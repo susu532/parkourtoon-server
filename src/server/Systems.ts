@@ -36,7 +36,7 @@ export function tickMobDespawn(ctx: GameContext) {
       if (mob.type === MobTypes.MORVANE) continue;
       const mx = mob.position.x;
       const mz = mob.position.z;
-      
+
       delete mobs[id];
       ctx.releaseMobToPool(mob);
       mobBuffers.delete(id);
@@ -78,7 +78,7 @@ export function tickMobDespawn(ctx: GameContext) {
       ) {
         const mx = mob.position.x;
         const mz = mob.position.z;
-        
+
         delete mobs[id];
         ctx.releaseMobToPool(mob);
         mobBuffers.delete(id);

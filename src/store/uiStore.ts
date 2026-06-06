@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { NPC } from '../game/NPC';
+import { create } from "zustand";
+import { NPC } from "../game/NPC";
 
 interface UIState {
   isInventoryOpen: boolean;
@@ -14,6 +14,7 @@ interface UIState {
   isLoadoutOpen: boolean;
   isHUDVisible: boolean;
   isEmojiWheelOpen: boolean;
+  showTutorialPopup: boolean;
   currentNPC: NPC | null;
   setInventoryOpen: (open: boolean) => void;
   setShopOpen: (open: boolean) => void;
@@ -27,6 +28,7 @@ interface UIState {
   setLoadoutOpen: (open: boolean) => void;
   setHUDVisible: (visible: boolean) => void;
   setEmojiWheelOpen: (open: boolean) => void;
+  setShowTutorialPopup: (show: boolean) => void;
   setCurrentNPC: (npc: NPC | null) => void;
   forceCloseAllMenus: () => void;
 }
@@ -44,6 +46,7 @@ export const useUIStore = create<UIState>((set) => ({
   isLoadoutOpen: false,
   isHUDVisible: true,
   isEmojiWheelOpen: false,
+  showTutorialPopup: true,
   currentNPC: null,
   setInventoryOpen: (open) => set({ isInventoryOpen: open }),
   setShopOpen: (open) => set({ isShopOpen: open }),
@@ -57,20 +60,21 @@ export const useUIStore = create<UIState>((set) => ({
   setLoadoutOpen: (open) => set({ isLoadoutOpen: open }),
   setHUDVisible: (visible) => set({ isHUDVisible: visible }),
   setEmojiWheelOpen: (open) => set({ isEmojiWheelOpen: open }),
+  setShowTutorialPopup: (show) => set({ showTutorialPopup: show }),
   setCurrentNPC: (npc) => set({ currentNPC: npc }),
-  forceCloseAllMenus: () => set({
-    isInventoryOpen: false,
-    isShopOpen: false,
-    isSettingsOpen: false,
-    isPauseMenuOpen: false,
-    isServerJoinOpen: false,
-    isLaunchMenuOpen: false,
-    isChestOpen: false,
-    isLoadoutOpen: false,
-    isEmojiWheelOpen: false,
-    currentNPC: null
-  })
+  forceCloseAllMenus: () =>
+    set({
+      isInventoryOpen: false,
+      isShopOpen: false,
+      isSettingsOpen: false,
+      isPauseMenuOpen: false,
+      isServerJoinOpen: false,
+      isLaunchMenuOpen: false,
+      isChestOpen: false,
+      isLoadoutOpen: false,
+      isEmojiWheelOpen: false,
+      currentNPC: null,
+    }),
 }));
 
 export const useUI = useUIStore;
-

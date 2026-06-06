@@ -1,19 +1,19 @@
-import { CHUNK_SIZE, CHUNK_HEIGHT, WORLD_Y_OFFSET } from './constants';
-import Database from 'better-sqlite3';
-import { parentPort } from 'worker_threads';
+import { CHUNK_SIZE, CHUNK_HEIGHT, WORLD_Y_OFFSET } from "./constants";
+import Database from "better-sqlite3";
+import { parentPort } from "worker_threads";
 
 export class ChunkManager {
   worldName: string;
   db: Database.Database;
-  
+
   // Memory efficient chunk storage
   // Compressing chunk data into flat singular Uint16Array ensures contiguous memory
   chunks: Map<string, Uint16Array> = new Map();
   dirtyChunks: Set<string> = new Set();
-  
+
   // Database preloaded chunks cache (cx,cz -> Uint16Array)
   dbChunks: Map<string, Uint16Array> = new Map();
-  
+
   insertChunk: Database.Statement;
   getChunk: Database.Statement;
   getAllChunks: Database.Statement;
@@ -21,9 +21,15 @@ export class ChunkManager {
   constructor(worldName: string, db: Database.Database) {
     this.worldName = worldName;
     this.db = db;
-    this.insertChunk = db.prepare(`INSERT OR REPLACE INTO chunk_data (world, chunk_id, data) VALUES (?, ?, ?)`);
-    this.getChunk = db.prepare(`SELECT data FROM chunk_data WHERE world = ? AND chunk_id = ?`);
-    this.getAllChunks = db.prepare(`SELECT chunk_id, data FROM chunk_data WHERE world = ?`);
+    this.insertChunk = db.prepare(
+      `INSERT OR REPLACE INTO chunk_data (world, chunk_id, data) VALUES (?, ?, ?)`,
+    );
+    this.getChunk = db.prepare(
+      `SELECT data FROM chunk_data WHERE world = ? AND chunk_id = ?`,
+    );
+    this.getAllChunks = db.prepare(
+      `SELECT chunk_id, data FROM chunk_data WHERE world = ?`,
+    );
     this.loadChunksFromDB(); // Initialize faster direct cache on startup
   }
 
@@ -34,13 +40,13 @@ export class ChunkManager {
         if (!row || !row.data) continue;
         const key = row.chunk_id;
         let changes: Uint16Array;
-        
-        if (typeof row.data === 'string' && row.data.startsWith('{')) {
+
+        if (typeof row.data === "string" && row.data.startsWith("{")) {
           const oldRecord = JSON.parse(row.data) as Record<string, number>;
           changes = new Uint16Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
           changes.fill(65535);
           for (const [k, v] of Object.entries(oldRecord)) {
-            const [wx, wy, wz] = k.split(',').map(Number);
+            const [wx, wy, wz] = k.split(",").map(Number);
             const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
             const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
             const ly = wy - WORLD_Y_OFFSET;
@@ -54,13 +60,13 @@ export class ChunkManager {
           changes = new Uint16Array(
             buffer,
             row.data.byteOffset || 0,
-            row.data.byteLength / 2
+            row.data.byteLength / 2,
           );
         }
         this.dbChunks.set(key, changes);
       }
     } catch (err) {
-      console.error('Error preloading chunks from DB:', err);
+      console.error("Error preloading chunks from DB:", err);
     }
   }
 
@@ -68,13 +74,13 @@ export class ChunkManager {
     const key = `${cx},${cz}`;
     let changes = this.chunks.get(key);
     if (changes) return changes;
-    
+
     const dbChanges = this.dbChunks.get(key);
     if (dbChanges) {
       this.chunks.set(key, dbChanges);
       return dbChanges;
     }
-    
+
     if (createIfMissing) {
       changes = new Uint16Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
       changes.fill(65535);
@@ -84,14 +90,21 @@ export class ChunkManager {
     }
     return undefined;
   }
-  
+
   // For backwards compatibility where getChunkArray was called just to force load
   getChunkArray(cx: number, cz: number, createIfMissing: boolean = true) {
     this.getChunkChanges(cx, cz, createIfMissing);
-    return null; 
+    return null;
   }
-  
-  setBlockInChunk(cx: number, cz: number, lx: number, ly: number, lz: number, type: number) {
+
+  setBlockInChunk(
+    cx: number,
+    cz: number,
+    lx: number,
+    ly: number,
+    lz: number,
+    type: number,
+  ) {
     if (ly >= 0 && ly < CHUNK_HEIGHT) {
       const changes = this.getChunkChanges(cx, cz, true)!;
       changes[lx | (lz << 4) | (ly << 8)] = type;
@@ -100,12 +113,18 @@ export class ChunkManager {
     }
   }
 
-  getBlockFromChunk(cx: number, cz: number, lx: number, ly: number, lz: number) {
+  getBlockFromChunk(
+    cx: number,
+    cz: number,
+    lx: number,
+    ly: number,
+    lz: number,
+  ) {
     if (ly >= 0 && ly < CHUNK_HEIGHT) {
       const changes = this.getChunkChanges(cx, cz, false);
       if (changes) {
-         const type = changes[lx | (lz << 4) | (ly << 8)];
-         if (type !== 65535) return type;
+        const type = changes[lx | (lz << 4) | (ly << 8)];
+        if (type !== 65535) return type;
       }
     }
     return undefined;
@@ -119,12 +138,12 @@ export class ChunkManager {
 
   saveDirtyChunks() {
     if (this.dirtyChunks.size === 0) return 0;
-    
+
     let savedCount = 0;
     const CHUNK_SAVE_LIMIT = 50;
     const chunksArray = Array.from(this.dirtyChunks).slice(0, CHUNK_SAVE_LIMIT);
-    const chunksData: { chunkId: string, data: any }[] = [];
-    
+    const chunksData: { chunkId: string; data: any }[] = [];
+
     for (const chunkId of chunksArray) {
       const changes = this.chunks.get(chunkId);
       if (changes) {
@@ -136,9 +155,9 @@ export class ChunkManager {
 
     if (chunksData.length > 0) {
       parentPort?.postMessage({
-        type: 'save_chunks',
+        type: "save_chunks",
         world: this.worldName,
-        chunksData
+        chunksData,
       });
     }
 
@@ -146,7 +165,7 @@ export class ChunkManager {
   }
 
   unloadIdleChunks(players: Record<string, any>, renderDistance: number) {
-    if (this.worldName.startsWith('summerlab')) return; // Do not unload for summerlab so changes persist in memory
+    if (this.worldName.startsWith("summerlab")) return; // Do not unload for summerlab so changes persist in memory
 
     const activeChunkCoords = new Set<string>();
     for (const p of Object.values(players)) {
@@ -160,7 +179,7 @@ export class ChunkManager {
         }
       }
     }
-    
+
     let unloadedCount = 0;
     for (const chunkId of this.chunks.keys()) {
       if (this.dirtyChunks.has(chunkId)) continue; // Never unload unsaved chunks
@@ -172,7 +191,9 @@ export class ChunkManager {
     }
 
     if (unloadedCount > 0) {
-      console.log(`[${this.worldName}] Unloaded ${unloadedCount} chunks from memory.`);
+      console.log(
+        `[${this.worldName}] Unloaded ${unloadedCount} chunks from memory.`,
+      );
     }
   }
 
@@ -185,7 +206,7 @@ export class ChunkManager {
       stmt.run(this.worldName);
       console.log(`[${this.worldName}] World has been completely reset.`);
     } catch (e) {
-      console.error('Error resetting world map:', e);
+      console.error("Error resetting world map:", e);
     }
   }
 

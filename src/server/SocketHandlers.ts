@@ -10,25 +10,57 @@ import { MobTypes } from "../game/Constants";
 function getFloat32Array(buf: any): Float32Array {
   if (Buffer.isBuffer(buf)) {
     if (buf.byteOffset % 4 !== 0) {
-      return new Float32Array(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+      return new Float32Array(
+        buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength),
+      );
     }
-    return new Float32Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 4));
+    return new Float32Array(
+      buf.buffer,
+      buf.byteOffset,
+      Math.floor(buf.byteLength / 4),
+    );
   }
   return new Float32Array(buf);
 }
 
 export function setupSocketHandlers(ctx: GameContext) {
   const {
-      ioNamespace, chunkManager, worldName, isSkyCastlesMode, isHubMode,
-      bakedBlocks, npcs, players, mobs, minions, droppedItems,
-      pendingPlayerUpdates, pendingBlockUpdates, pendingHits, pendingMobHits, pendingRespawns,
-      state, dayCycleSpeed, CELL_SIZE, PLAYER_CELL_SIZE, hostileMobTypes,
-      mode, db, getCellKey, broadcastToNearby, spawnMob, 
-      isIndestructible, getBlockAt, resetRoom,
-      playerBuffers, mobBuffers, spatialHash, playerHash
+    ioNamespace,
+    chunkManager,
+    worldName,
+    isSkyCastlesMode,
+    isHubMode,
+    bakedBlocks,
+    npcs,
+    players,
+    mobs,
+    minions,
+    droppedItems,
+    pendingPlayerUpdates,
+    pendingBlockUpdates,
+    pendingHits,
+    pendingMobHits,
+    pendingRespawns,
+    state,
+    dayCycleSpeed,
+    CELL_SIZE,
+    PLAYER_CELL_SIZE,
+    hostileMobTypes,
+    mode,
+    db,
+    getCellKey,
+    broadcastToNearby,
+    spawnMob,
+    isIndestructible,
+    getBlockAt,
+    resetRoom,
+    playerBuffers,
+    mobBuffers,
+    spatialHash,
+    playerHash,
   } = ctx;
 
-ctx.ioNamespace.on("connection", (socket) => {
+  ctx.ioNamespace.on("connection", (socket) => {
     console.log("Player connected:", socket.id);
 
     if (Object.keys(players).length === 0 && isSkyCastlesMode) {
@@ -45,7 +77,7 @@ ctx.ioNamespace.on("connection", (socket) => {
       gameStartTime: state.gameStartTime, // added
       npcs,
     });
-    
+
     if (state.lastSkyCastlesSyncJSON) {
       socket.emit("skyCastlesSync", JSON.parse(state.lastSkyCastlesSyncJSON));
     }
@@ -65,7 +97,7 @@ ctx.ioNamespace.on("connection", (socket) => {
             }
           }
         }
-        
+
         if (changedCount > 0 && changedCount <= 15) {
           socket.emit("chunkData", { cx, cz, patch: patches });
         } else if (changedCount > 0) {
@@ -83,12 +115,12 @@ ctx.ioNamespace.on("connection", (socket) => {
     socket.on("join", (data) => {
       // If it's dungeon delver, remove a bot to make room for human
       if (worldName.startsWith("dungeondelver")) {
-          const botIds = Object.keys(players).filter(id => players[id].isBot);
-          if (botIds.length > 0) {
-              const botToRemove = botIds[0];
-              ioNamespace.emit("playerLeft", botToRemove);
-              delete players[botToRemove];
-          }
+        const botIds = Object.keys(players).filter((id) => players[id].isBot);
+        if (botIds.length > 0) {
+          const botToRemove = botIds[0];
+          ioNamespace.emit("playerLeft", botToRemove);
+          delete players[botToRemove];
+        }
       }
 
       let team = null;
@@ -171,7 +203,7 @@ ctx.ioNamespace.on("connection", (socket) => {
       );
       // Emit back to the joining player so they add themselves to the leaderboard
       socket.emit("playerJoined", players[socket.id]);
-      
+
       ioNamespace.emit("chatMessage", {
         sender: "System",
         message: `${finalName} joined the game`,
@@ -206,46 +238,46 @@ ctx.ioNamespace.on("connection", (socket) => {
 
     // Handle splats
     socket.on("splats", (data: any[]) => {
-       if (!data || !Array.isArray(data)) return;
-       const toBroadcast = [];
-       for (const splat of data) {
-         if (Array.isArray(splat) && splat.length === 7) {
-            // [x, y, z, nx, ny, nz, colorHex]
-            const px = Math.floor(splat[0] * 5);
-            const py = Math.floor(splat[1] * 5);
-            const pz = Math.floor(splat[2] * 5);
-            const gridKey = `${px},${py},${pz}`;
-            
-            // Limit map size
-            if (!ctx.globalSplats.has(gridKey) && ctx.globalSplats.size > 80000) {
-               // Remove random
-               const iterator = ctx.globalSplats.keys();
-               ctx.globalSplats.delete(iterator.next().value!);
-            }
-            ctx.globalSplats.set(gridKey, splat);
-            toBroadcast.push(splat);
-         }
-       }
-       if (toBroadcast.length > 0) {
-         ctx.pendingSplats.push(...toBroadcast);
-         // Immediately relay to others using volatile if we want, or batch in tick.
-         // Let's rely on tick for batching if many players, but immediate broadcast is easier.
-         socket.broadcast.emit("splats", toBroadcast);
-       }
+      if (!data || !Array.isArray(data)) return;
+      const toBroadcast = [];
+      for (const splat of data) {
+        if (Array.isArray(splat) && splat.length === 7) {
+          // [x, y, z, nx, ny, nz, colorHex]
+          const px = Math.floor(splat[0] * 5);
+          const py = Math.floor(splat[1] * 5);
+          const pz = Math.floor(splat[2] * 5);
+          const gridKey = `${px},${py},${pz}`;
+
+          // Limit map size
+          if (!ctx.globalSplats.has(gridKey) && ctx.globalSplats.size > 80000) {
+            // Remove random
+            const iterator = ctx.globalSplats.keys();
+            ctx.globalSplats.delete(iterator.next().value!);
+          }
+          ctx.globalSplats.set(gridKey, splat);
+          toBroadcast.push(splat);
+        }
+      }
+      if (toBroadcast.length > 0) {
+        ctx.pendingSplats.push(...toBroadcast);
+        // Immediately relay to others using volatile if we want, or batch in tick.
+        // Let's rely on tick for batching if many players, but immediate broadcast is easier.
+        socket.broadcast.emit("splats", toBroadcast);
+      }
     });
 
     socket.on("cleanSplats", (keys: string[]) => {
-       if (!keys || !Array.isArray(keys)) return;
-       const toBroadcast = [];
-       for (const k of keys) {
-         if (ctx.globalSplats.has(k)) {
-            ctx.globalSplats.delete(k);
-            toBroadcast.push(k);
-         }
-       }
-       if (toBroadcast.length > 0) {
-          socket.broadcast.emit("cleanSplats", toBroadcast);
-       }
+      if (!keys || !Array.isArray(keys)) return;
+      const toBroadcast = [];
+      for (const k of keys) {
+        if (ctx.globalSplats.has(k)) {
+          ctx.globalSplats.delete(k);
+          toBroadcast.push(k);
+        }
+      }
+      if (toBroadcast.length > 0) {
+        socket.broadcast.emit("cleanSplats", toBroadcast);
+      }
     });
 
     // Handle player hit
@@ -258,7 +290,11 @@ ctx.ioNamespace.on("connection", (socket) => {
 
       if (players[id]) {
         // Invulnerability for 5 seconds after respawn (unless dungeon delver)
-        if (!mode.name.startsWith("/dungeondelver") && Date.now() - (players[id].lastRespawnTime || 0) < 5000) return;
+        if (
+          !mode.name.startsWith("/dungeondelver") &&
+          Date.now() - (players[id].lastRespawnTime || 0) < 5000
+        )
+          return;
 
         players[id].health -= damage;
         players[id].lastDamageTime = Date.now();
@@ -279,15 +315,15 @@ ctx.ioNamespace.on("connection", (socket) => {
               victimName: players[id].name || "Player",
               isPlayer: true,
               isBot: players[id].isBot || false,
-              coinsRewarded: 35
+              coinsRewarded: 35,
             });
             if (worldName.startsWith("dungeondelver")) {
               players[attackerId].health = players[attackerId].maxHealth || 100;
             }
-            ioNamespace.emit("playerStatsUpdate", { 
-              id: attackerId, 
-              kills: players[attackerId].kills, 
-              deaths: players[attackerId].deaths 
+            ioNamespace.emit("playerStatsUpdate", {
+              id: attackerId,
+              kills: players[attackerId].kills,
+              deaths: players[attackerId].deaths,
             });
             pendingPlayerUpdates.add(attackerId);
           }
@@ -297,10 +333,10 @@ ctx.ioNamespace.on("connection", (socket) => {
             message: deathMessage,
           });
 
-          ioNamespace.emit("playerStatsUpdate", { 
-            id: id, 
-            kills: players[id].kills, 
-            deaths: players[id].deaths 
+          ioNamespace.emit("playerStatsUpdate", {
+            id: id,
+            kills: players[id].kills,
+            deaths: players[id].deaths,
           });
 
           broadcastToNearby(
@@ -380,7 +416,7 @@ ctx.ioNamespace.on("connection", (socket) => {
         isSprinting,
         damage: clientDamage,
         isCrit: clientIsCrit,
-        isProjectile
+        isProjectile,
       } = data;
 
       if (isHubMode && !isMob) return; // Prevent PvP in Hub
@@ -394,25 +430,33 @@ ctx.ioNamespace.on("connection", (socket) => {
         return; // Max ~4.5 attacks per second over network to account for jitter
       attacker.lastAttackTime = now;
 
-      const { damage: finalDamage, isCrit: finalIsCrit } = CombatEngine.calculateDamage(attacker);
+      const { damage: finalDamage, isCrit: finalIsCrit } =
+        CombatEngine.calculateDamage(attacker);
       let damage = finalDamage;
       const _isCrit = finalIsCrit;
 
-      const serverKnockbackDir = CombatEngine.calculateKnockback(attacker, isSprinting, isProjectile, knockbackDir);
+      const serverKnockbackDir = CombatEngine.calculateKnockback(
+        attacker,
+        isSprinting,
+        isProjectile,
+        knockbackDir,
+      );
 
       if (isMob) {
         const mob = mobs[targetId];
         if (mob) {
           const mobWidth = mob.type === MobTypes.MORVANE ? 3.0 : 0.6;
           const mobHeight = mob.type === MobTypes.MORVANE ? 9.0 : 1.8;
-          let dx = Math.abs(attacker.position.x - mob.position.x) - mobWidth / 2;
+          let dx =
+            Math.abs(attacker.position.x - mob.position.x) - mobWidth / 2;
           let dy = 0;
           if (attacker.position.y > mob.position.y + mobHeight) {
             dy = attacker.position.y - (mob.position.y + mobHeight);
           } else if (attacker.position.y < mob.position.y) {
             dy = mob.position.y - attacker.position.y;
           }
-          let dz = Math.abs(attacker.position.z - mob.position.z) - mobWidth / 2;
+          let dz =
+            Math.abs(attacker.position.z - mob.position.z) - mobWidth / 2;
           if (dx < 0) dx = 0;
           if (dy < 0) dy = 0;
           if (dz < 0) dz = 0;
@@ -434,7 +478,7 @@ ctx.ioNamespace.on("connection", (socket) => {
               victimName: mob.type || "Mob",
               isPlayer: false,
               isBot: false,
-              coinsRewarded: 10
+              coinsRewarded: 10,
             });
 
             if (worldName.startsWith("dungeondelver")) {
@@ -442,7 +486,7 @@ ctx.ioNamespace.on("connection", (socket) => {
               pendingPlayerUpdates.add(socket.id);
             }
             if (mode.onMobDeath) {
-                mode.onMobDeath(ctx, mob, socket.id);
+              mode.onMobDeath(ctx, mob, socket.id);
             }
             if (mob.type === MobTypes.MORVANE) {
               ioNamespace.emit("mobDespawned", targetId);
@@ -478,7 +522,11 @@ ctx.ioNamespace.on("connection", (socket) => {
         const target = players[targetId];
         if (target) {
           // Invulnerability for 5 seconds after respawn (unless dungeon delver)
-          if (!mode.name.startsWith("/dungeondelver") && Date.now() - (target.lastRespawnTime || 0) < 5000) return;
+          if (
+            !mode.name.startsWith("/dungeondelver") &&
+            Date.now() - (target.lastRespawnTime || 0) < 5000
+          )
+            return;
 
           if (attacker.team && target.team && attacker.team === target.team)
             return;
@@ -511,28 +559,28 @@ ctx.ioNamespace.on("connection", (socket) => {
                 victimName: target.name || "Player",
                 isPlayer: true,
                 isBot: target.isBot || false,
-                coinsRewarded: 35
+                coinsRewarded: 35,
               });
               if (worldName.startsWith("dungeondelver")) {
                 attacker.health = attacker.maxHealth || 100;
               }
             }
             pendingPlayerUpdates.add(socket.id);
-            
-            ioNamespace.emit("playerStatsUpdate", { 
-              id: socket.id, 
-              kills: attacker?.kills || 0, 
+
+            ioNamespace.emit("playerStatsUpdate", {
+              id: socket.id,
+              kills: attacker?.kills || 0,
               deaths: attacker?.deaths || 0,
-              health: attacker?.health
+              health: attacker?.health,
             });
-            ioNamespace.emit("playerStatsUpdate", { 
-              id: targetId, 
-              kills: target?.kills || 0, 
+            ioNamespace.emit("playerStatsUpdate", {
+              id: targetId,
+              kills: target?.kills || 0,
               deaths: target?.deaths || 0,
-              health: target?.health
+              health: target?.health,
             });
 
-            let deathMessage = `${target.name} was slain by ${attacker?.name || 'unknown'}`;
+            let deathMessage = `${target.name} was slain by ${attacker?.name || "unknown"}`;
             ioNamespace.emit("chatMessage", {
               sender: "System",
               message: deathMessage,
@@ -630,7 +678,7 @@ ctx.ioNamespace.on("connection", (socket) => {
       if (!player) return;
 
       try {
-const floats = getFloat32Array(buf);
+        const floats = getFloat32Array(buf);
         const px = floats[0];
         const py = floats[1];
         const pz = floats[2];
@@ -672,10 +720,10 @@ const floats = getFloat32Array(buf);
           player.position.y = py;
           player.position.z = pz;
           if (player.rotation) {
-             player.rotation.x = rx;
-             player.rotation.y = ry;
+            player.rotation.x = rx;
+            player.rotation.y = ry;
           } else {
-             player.rotation = { x: rx, y: ry, z: 0 };
+            player.rotation = { x: rx, y: ry, z: 0 };
           }
           pendingPlayerUpdates.add(socket.id);
         }
@@ -707,20 +755,62 @@ const floats = getFloat32Array(buf);
       if (!players[socket.id]) return;
       const p = players[socket.id];
       let changed = false;
-      if (p.isFlying !== state.isFlying) { p.isFlying = state.isFlying; changed = true; }
-      if (p.isSwimming !== state.isSwimming) { p.isSwimming = state.isSwimming; changed = true; }
-      if (p.isCrouching !== state.isCrouching) { p.isCrouching = state.isCrouching; changed = true; }
-      if (p.isSprinting !== state.isSprinting) { p.isSprinting = state.isSprinting; changed = true; }
-      if (p.isSwinging !== state.isSwinging) { p.isSwinging = state.isSwinging; changed = true; }
-      if (p.isGliding !== state.isGliding) { p.isGliding = state.isGliding; changed = true; }
-      if (p.isBlocking !== state.isBlocking) { p.isBlocking = state.isBlocking; changed = true; }
-      if (p.isShooting !== state.isShooting) { p.isShooting = state.isShooting; changed = true; }
-      if (p.fluidColor !== state.fluidColor) { p.fluidColor = state.fluidColor; changed = true; }
-      if (p.swingSpeed !== state.swingSpeed) { p.swingSpeed = state.swingSpeed; changed = true; }
-      if (p.isGrounded !== state.isGrounded) { p.isGrounded = state.isGrounded; changed = true; }
-      if (p.heldItem !== state.heldItem) { p.heldItem = state.heldItem; changed = true; }
-      if (p.offHandItem !== state.offHandItem) { p.offHandItem = state.offHandItem; changed = true; }
-      if (p.defense !== state.defense) { p.defense = state.defense; changed = true; }
+      if (p.isFlying !== state.isFlying) {
+        p.isFlying = state.isFlying;
+        changed = true;
+      }
+      if (p.isSwimming !== state.isSwimming) {
+        p.isSwimming = state.isSwimming;
+        changed = true;
+      }
+      if (p.isCrouching !== state.isCrouching) {
+        p.isCrouching = state.isCrouching;
+        changed = true;
+      }
+      if (p.isSprinting !== state.isSprinting) {
+        p.isSprinting = state.isSprinting;
+        changed = true;
+      }
+      if (p.isSwinging !== state.isSwinging) {
+        p.isSwinging = state.isSwinging;
+        changed = true;
+      }
+      if (p.isGliding !== state.isGliding) {
+        p.isGliding = state.isGliding;
+        changed = true;
+      }
+      if (p.isBlocking !== state.isBlocking) {
+        p.isBlocking = state.isBlocking;
+        changed = true;
+      }
+      if (p.isShooting !== state.isShooting) {
+        p.isShooting = state.isShooting;
+        changed = true;
+      }
+      if (p.fluidColor !== state.fluidColor) {
+        p.fluidColor = state.fluidColor;
+        changed = true;
+      }
+      if (p.swingSpeed !== state.swingSpeed) {
+        p.swingSpeed = state.swingSpeed;
+        changed = true;
+      }
+      if (p.isGrounded !== state.isGrounded) {
+        p.isGrounded = state.isGrounded;
+        changed = true;
+      }
+      if (p.heldItem !== state.heldItem) {
+        p.heldItem = state.heldItem;
+        changed = true;
+      }
+      if (p.offHandItem !== state.offHandItem) {
+        p.offHandItem = state.offHandItem;
+        changed = true;
+      }
+      if (p.defense !== state.defense) {
+        p.defense = state.defense;
+        changed = true;
+      }
       if (p.currentEmoji !== state.currentEmoji) {
         p.currentEmoji = state.currentEmoji;
         changed = true;
@@ -784,7 +874,7 @@ const floats = getFloat32Array(buf);
         data,
         x: player.position.x,
         z: player.position.z,
-        socketId: socket.id
+        socketId: socket.id,
       });
     });
 
@@ -822,34 +912,50 @@ const floats = getFloat32Array(buf);
 
     // Handle shooting arrows
     socket.on("shootArrow", (data) => {
-      let position = {x:0, y:0, z:0}, velocity = {x:0, y:0, z:0}, power = 1;
+      let position = { x: 0, y: 0, z: 0 },
+        velocity = { x: 0, y: 0, z: 0 },
+        power = 1;
       if (Buffer.isBuffer(data) || data instanceof ArrayBuffer) {
         const floats = getFloat32Array(data);
         power = floats[0];
-        position.x = floats[1]; position.y = floats[2]; position.z = floats[3];
-        velocity.x = floats[4]; velocity.y = floats[5]; velocity.z = floats[6];
+        position.x = floats[1];
+        position.y = floats[2];
+        position.z = floats[3];
+        velocity.x = floats[4];
+        velocity.y = floats[5];
+        velocity.z = floats[6];
       } else {
-        power = data.power; position = data.position; velocity = data.velocity;
+        power = data.power;
+        position = data.position;
+        velocity = data.velocity;
       }
-      
+
       socket.broadcast.emit("shootArrow", {
         shooter: socket.id,
         power,
         position,
-        velocity
+        velocity,
       });
     });
 
     // Handle dropping items
     socket.on("dropItem", (data) => {
-      let type, position = {x:0, y:0, z:0}, velocity = {x:0, y:0, z:0};
+      let type,
+        position = { x: 0, y: 0, z: 0 },
+        velocity = { x: 0, y: 0, z: 0 };
       if (Buffer.isBuffer(data) || data instanceof ArrayBuffer) {
         const floats = getFloat32Array(data);
         type = floats[0];
-        position.x = floats[1]; position.y = floats[2]; position.z = floats[3];
-        velocity.x = floats[4]; velocity.y = floats[5]; velocity.z = floats[6];
+        position.x = floats[1];
+        position.y = floats[2];
+        position.z = floats[3];
+        velocity.x = floats[4];
+        velocity.y = floats[5];
+        velocity.z = floats[6];
       } else {
-        type = data.type; position = data.position; velocity = data.velocity;
+        type = data.type;
+        position = data.position;
+        velocity = data.velocity;
       }
       const player = players[socket.id];
       if (player) {
@@ -904,13 +1010,17 @@ const floats = getFloat32Array(buf);
 
     // Handle spawning minions
     socket.on("spawnMinion", (data) => {
-      let type, position = {x:0, y:0, z:0};
+      let type,
+        position = { x: 0, y: 0, z: 0 };
       if (Buffer.isBuffer(data) || data instanceof ArrayBuffer) {
         const floats = getFloat32Array(data);
         type = Math.floor(floats[0]);
-        position.x = floats[1]; position.y = floats[2]; position.z = floats[3];
+        position.x = floats[1];
+        position.y = floats[2];
+        position.z = floats[3];
       } else {
-        type = data.type; position = data.position;
+        type = data.type;
+        position = data.position;
       }
       const player = players[socket.id];
       if (!player) return;
@@ -1008,40 +1118,78 @@ const floats = getFloat32Array(buf);
 
     // Handle party and friend mechanics
     socket.on("friendRequest", (targetName: string) => {
-      const target = Object.values(players).find((p: any) => p.name.toLowerCase() === targetName.toLowerCase() && p.id !== socket.id);
+      const target = Object.values(players).find(
+        (p: any) =>
+          p.name.toLowerCase() === targetName.toLowerCase() &&
+          p.id !== socket.id,
+      );
       if (target) {
-        ioNamespace.to(target.id).emit("friendRequest", { sourceId: socket.id, sourceName: players[socket.id]?.name || "Player" });
+        ioNamespace
+          .to(target.id)
+          .emit("friendRequest", {
+            sourceId: socket.id,
+            sourceName: players[socket.id]?.name || "Player",
+          });
       } else {
-        socket.emit("chatMessage", { sender: "System", message: `§cPlayer ${targetName} not found online.` });
+        socket.emit("chatMessage", {
+          sender: "System",
+          message: `§cPlayer ${targetName} not found online.`,
+        });
       }
     });
 
     socket.on("friendAccept", (targetId: string) => {
-      ioNamespace.to(targetId).emit("friendAccept", { sourceId: socket.id, sourceName: players[socket.id]?.name || "Player" });
+      ioNamespace
+        .to(targetId)
+        .emit("friendAccept", {
+          sourceId: socket.id,
+          sourceName: players[socket.id]?.name || "Player",
+        });
     });
 
     socket.on("partyInvite", (targetName: string) => {
-      const target = Object.values(players).find((p: any) => p.name.toLowerCase() === targetName.toLowerCase() && p.id !== socket.id);
+      const target = Object.values(players).find(
+        (p: any) =>
+          p.name.toLowerCase() === targetName.toLowerCase() &&
+          p.id !== socket.id,
+      );
       if (target) {
-        ioNamespace.to(target.id).emit("partyInvite", { sourceId: socket.id, sourceName: players[socket.id]?.name || "Player", server: worldName });
-        socket.emit("chatMessage", { sender: "System", message: `§eParty invite sent to ${target.name}.` });
+        ioNamespace
+          .to(target.id)
+          .emit("partyInvite", {
+            sourceId: socket.id,
+            sourceName: players[socket.id]?.name || "Player",
+            server: worldName,
+          });
+        socket.emit("chatMessage", {
+          sender: "System",
+          message: `§eParty invite sent to ${target.name}.`,
+        });
       } else {
-        socket.emit("chatMessage", { sender: "System", message: `§cPlayer ${targetName} not found online.` });
+        socket.emit("chatMessage", {
+          sender: "System",
+          message: `§cPlayer ${targetName} not found online.`,
+        });
       }
     });
 
     socket.on("partyAccept", (targetId: string) => {
-      ioNamespace.to(targetId).emit("partyAccept", { sourceId: socket.id, sourceName: players[socket.id]?.name || "Player" });
+      ioNamespace
+        .to(targetId)
+        .emit("partyAccept", {
+          sourceId: socket.id,
+          sourceName: players[socket.id]?.name || "Player",
+        });
     });
 
     socket.on("disconnect", () => {
       console.log("Player disconnected:", socket.id);
       const p = players[socket.id];
       if (p) {
-        // Broadcast left globally to prevent ghost players, since a player disconnected 
+        // Broadcast left globally to prevent ghost players, since a player disconnected
         // from a different chunk might still be rendered for players out of broadcastToNearby range.
         ioNamespace.emit("playerLeft", socket.id);
-        
+
         ioNamespace.emit("chatMessage", {
           sender: "System",
           message: `${p.name} left the game`,
@@ -1052,6 +1200,4 @@ const floats = getFloat32Array(buf);
       playerBuffers.delete(socket.id);
     });
   });
-
-
 }

@@ -1,9 +1,7 @@
 import itemsData from "../../data/items.json";
 
 export class CombatEngine {
-  static calculateDamage(
-    attacker: any
-  ): { damage: number; isCrit: boolean } {
+  static calculateDamage(attacker: any): { damage: number; isCrit: boolean } {
     let baseDamage = 5;
     let strength = 0;
     let critChance = 30;
@@ -27,7 +25,7 @@ export class CombatEngine {
     const critMultiplier = isCrit ? 1 + critDamage / 100 : 1;
 
     let damage = Math.floor(
-      baseDamage * strengthMultiplier * critMultiplier * additiveMultiplier
+      baseDamage * strengthMultiplier * critMultiplier * additiveMultiplier,
     );
 
     return { damage, isCrit };
@@ -37,7 +35,7 @@ export class CombatEngine {
     attacker: any,
     isSprinting?: boolean,
     isProjectile?: boolean,
-    knockbackDir?: { x: number; y?: number; z: number }
+    knockbackDir?: { x: number; y?: number; z: number },
   ) {
     const attackerYaw = attacker.rotation?.y || 0;
     const kbForce = isSprinting ? 12 : 8;

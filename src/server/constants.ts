@@ -1,4 +1,4 @@
-import { ItemType } from '../game/Inventory';
+import { ItemType } from "../game/Inventory";
 
 export const CHUNK_SIZE = 16;
 export const CHUNK_HEIGHT = 256;
@@ -10,4 +10,4 @@ export function isWaterBlock(type: number) {
   return type === BLOCK.WATER || (type >= 19 && type <= 25);
 }
 
-export { isSolidBlock } from '../game/Categories';
+export { isSolidBlock } from "../game/Categories";

@@ -1,5 +1,9 @@
-
-import { IServerPlayer, ITickMob, IDroppedItemState, IMinionState } from '../types/shared';
+import {
+  IServerPlayer,
+  ITickMob,
+  IDroppedItemState,
+  IMinionState,
+} from "../types/shared";
 
 export interface GameContext {
   ioNamespace: any;
@@ -9,27 +13,27 @@ export interface GameContext {
   isHubMode: boolean;
   db: any;
   mode: any;
-  
+
   bakedBlocks: Map<string, number>;
   npcs: any[];
   players: Record<string, IServerPlayer>;
   droppedItems: Record<string, IDroppedItemState>;
   mobs: Record<string, ITickMob>;
   minions: Record<string, IMinionState>;
-  
+
   pendingPlayerUpdates: Set<string>;
   pendingBlockUpdates: any[];
   pendingHits: any[];
   pendingMobHits: any[];
   pendingRespawns: any[];
-  
+
   playerBuffers: Map<string, Buffer>;
   mobBuffers: Map<string, Buffer>;
-  
+
   globalSplats: Map<string, any[]>;
   pendingSplats: any[];
   pendingCleanSplats: string[];
-  
+
   spatialHash: Map<number, ITickMob[]>;
   playerHash: Map<number, IServerPlayer[]>;
 
@@ -57,8 +61,22 @@ export interface GameContext {
 
   // Functions
   getCellKey: (cx: number, cz: number) => number;
-  broadcastToNearby: <T = any>(eventName: string, data: T, x: number, z: number, rangeSq: number, excludeId?: string | null) => void;
-  spawnMob: (type: string, x: number, y: number, z: number, level?: number, team?: string) => void;
+  broadcastToNearby: <T = any>(
+    eventName: string,
+    data: T,
+    x: number,
+    z: number,
+    rangeSq: number,
+    excludeId?: string | null,
+  ) => void;
+  spawnMob: (
+    type: string,
+    x: number,
+    y: number,
+    z: number,
+    level?: number,
+    team?: string,
+  ) => void;
   isIndestructible: (x: number, y: number, z: number) => boolean;
   getBlockAt: (x: number, y: number, z: number) => number | undefined;
   resetRoom: () => void;

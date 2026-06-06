@@ -1,6 +1,11 @@
 import { GameModeInfo } from "./modes/GameMode";
 import { ChunkManager } from "./ChunkManager";
-import { IPlayerUpdate, IMobState, IDroppedItemState, IMinionState } from "../types/shared";
+import {
+  IPlayerUpdate,
+  IMobState,
+  IDroppedItemState,
+  IMinionState,
+} from "../types/shared";
 
 export class GameServerContext {
   ioNamespace: any;
@@ -10,30 +15,56 @@ export class GameServerContext {
   isHubMode: boolean;
 
   npcs: any[] = [];
-  players: Record<string, IPlayerUpdate & { 
-    lastPos?: {x:number, y:number, z:number}, 
-    yaw?: number, 
-    lastRespawnTime?: number,
-    disconnectTimeout?: NodeJS.Timeout,
-    skills?: any,
-    inventory?: Record<number, any>,
-    hotbar?: (any | null)[],
-    maxHealth?: number,
-    kills?: number,
-    deaths?: number,
-    stats?: any
-  }> = {};
+  players: Record<
+    string,
+    IPlayerUpdate & {
+      lastPos?: { x: number; y: number; z: number };
+      yaw?: number;
+      lastRespawnTime?: number;
+      disconnectTimeout?: NodeJS.Timeout;
+      skills?: any;
+      inventory?: Record<number, any>;
+      hotbar?: (any | null)[];
+      maxHealth?: number;
+      kills?: number;
+      deaths?: number;
+      stats?: any;
+    }
+  > = {};
   morvaneDead: Record<string, boolean> = { red: false, blue: false };
   droppedItems: Record<string, IDroppedItemState> = {};
-  mobs: Record<string, IMobState & { vx?: number, vy?: number, vz?: number, isBoss?: boolean, lastTargetUpdate?: number, targetId?: string, lastAttack?: number, currentCell?: number }> = {};
-  minions: Record<string, IMinionState & { ownerId?: string, team?: string, targetId?: string, lastAttack?: number, vx?: number, vy?: number, vz?: number }> = {};
-  
+  mobs: Record<
+    string,
+    IMobState & {
+      vx?: number;
+      vy?: number;
+      vz?: number;
+      isBoss?: boolean;
+      lastTargetUpdate?: number;
+      targetId?: string;
+      lastAttack?: number;
+      currentCell?: number;
+    }
+  > = {};
+  minions: Record<
+    string,
+    IMinionState & {
+      ownerId?: string;
+      team?: string;
+      targetId?: string;
+      lastAttack?: number;
+      vx?: number;
+      vy?: number;
+      vz?: number;
+    }
+  > = {};
+
   pendingPlayerUpdates: Set<string> = new Set();
   pendingBlockUpdates: any[] = [];
   pendingHits: any[] = [];
   pendingMobHits: any[] = [];
   pendingRespawns: any[] = [];
-  
+
   playerBuffers: Map<string, Buffer> = new Map();
   mobBuffers: Map<string, Buffer> = new Map();
 
@@ -67,7 +98,7 @@ export class GameServerContext {
     public db: any,
     public mode: GameModeInfo,
     public namespacePrefix: string,
-    public bakedBlocks: Map<string, number>
+    public bakedBlocks: Map<string, number>,
   ) {
     this.ioNamespace = io.of(mode.name);
     this.worldName = namespacePrefix.replace("/", "");
@@ -80,4 +111,3 @@ export class GameServerContext {
     return (cx & 0x7fff) | ((cz & 0x7fff) << 15);
   }
 }
-
