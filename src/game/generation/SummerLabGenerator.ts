@@ -1202,7 +1202,7 @@ function precomputePlatforms() {
     const by = parseInt(coords[1], 10);
     const bz = parseInt(coords[2], 10);
     if (bx >= -500 && bx <= 500 && bz >= -500 && bz <= 500) {
-      const key = (bx + 500) + ((bz + 500) * 1000) + (by * 1000000);
+      const key = (bx + 500) + ((bz + 500) * 2000) + (by * 4000000);
       customBlockIntMap.set(key, v);
     }
   }
@@ -1239,7 +1239,7 @@ export function getSummerLabBlock(x: number, y: number, z: number): number {
     // Check custom blocks
     let customBlock: number | undefined;
     if (x >= -500 && x <= 500 && z >= -500 && z <= 500) {
-      customBlock = customBlockIntMap.get((x + 500) + ((z + 500) * 1000) + (y * 1000000));
+      customBlock = customBlockIntMap.get((x + 500) + ((z + 500) * 2000) + (y * 4000000));
     } else {
       customBlock = customBlocks.get(`${x},${y},${z}`);
     }
