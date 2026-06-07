@@ -389,6 +389,33 @@ export function createGameServer(
     releaseMobToPool,
   };
 
+  const fakeBotId = "fake_afk_bot_247";
+  const fakeRespawn = mode.getRespawnPosition(fakeBotId, {}, chunkManager, bakedBlocks);
+  players[fakeBotId] = {
+    id: fakeBotId,
+    position: {
+      x: fakeRespawn.x,
+      y: fakeRespawn.y,
+      z: fakeRespawn.z,
+    },
+    velocity: { x: 0, y: 0, z: 0 },
+    rotation: {
+      x: 0,
+      y: fakeRespawn.yaw !== undefined ? fakeRespawn.yaw : 0,
+      z: 0,
+    },
+    skinSeed: "smol potato458966327",
+    name: "smol potato458966327",
+    health: 100,
+    maxHealth: 100,
+    defense: 0,
+    isBot: false,
+    isDead: false,
+    heldItem: 521,
+    offHandItem: 0,
+    lastRespawnTime: Date.now(),
+  };
+
   setupSocketHandlers(ctx);
 
   if (worldName.includes("summerlab")) {
