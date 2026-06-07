@@ -1416,3 +1416,84 @@ export function getSummerLabRespawn(playerState: any) {
     yaw: playerState.summerLabRespawn.yaw,
   };
 }
+
+export function getSummerLabChunkBounds(cx: number, cz: number): { minY: number, maxY: number } | null {
+  precomputePlatforms();
+  const chunkMinX = cx * 16;
+  const chunkMaxX = chunkMinX + 15;
+  const chunkMinZ = cz * 16;
+  const chunkMaxZ = chunkMinZ + 15;
+
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  // Check spawn island
+  if (11 + 4 >= chunkMinX && 11 - 4 <= chunkMaxX &&
+      0 + 4 >= chunkMinZ && 0 - 4 <= chunkMaxZ) {
+    minY = Math.min(minY, -9);
+    maxY = Math.max(maxY, 1);
+  }
+
+  // Check islands
+  for (const [iy, island] of islandCache.entries()) {
+    if (island.cx + 20 >= chunkMinX && island.cx - 20 <= chunkMaxX &&
+        island.cz + 20 >= chunkMinZ && island.cz - 20 <= chunkMaxZ) {
+      minY = Math.min(minY, iy - 9);
+      maxY = Math.max(maxY, iy + 30); // islands have trees/structures up to +30 roughly
+    }
+  }
+
+  // Check platforms
+  for (const [iy, plat] of platformCache.entries()) {
+    if (plat.px + 2 >= chunkMinX && plat.px - 2 <= chunkMaxX &&
+        plat.pz + 2 >= chunkMinZ && plat.pz - 2 <= chunkMaxZ) {
+      minY = Math.min(minY, iy);
+      maxY = Math.max(maxY, iy);
+    }
+  }
+
+  // Custom blocks bounds check is tricky, so we'll just check if any custom block is in this chunk.
+  // We can pre-calculate chunk custom block presence!
+  if (!globalThis.customBlocksChunkMapForSummerLab) {
+    const map = new Map<string, { minY: number, maxY: number }>();
+    for (const [key, _] of customBlocks.entries()) {
+      const parts = key.split(",");
+      const x = parseInt(parts[0], 10);
+      const y = parseInt(parts[1], 10);
+      const z = parseInt(parts[2], 10);
+      const cxx = Math.floor(x / 16);
+      const czz = Math.floor(z / 16);
+      const cKey = `${cxx},${czz}`;
+      const bounds = map.get(cKey) || { minY: Infinity, maxY: -Infinity };
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxY = Math.max(bounds.maxY, y);
+      map.set(cKey, bounds);
+    }
+    
+    // Also add from customBlockIntMap
+    for (const [key, _] of customBlockIntMap.entries()) {
+      let temp = key;
+      const x = (temp % 2000) - 500;
+      temp = Math.floor(temp / 2000);
+      const z = (temp % 2000) - 500;
+      const y = Math.floor(temp / 2000);
+      const cxx = Math.floor(x / 16);
+      const czz = Math.floor(z / 16);
+      const cKey = `${cxx},${czz}`;
+      const bounds = map.get(cKey) || { minY: Infinity, maxY: -Infinity };
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxY = Math.max(bounds.maxY, y);
+      map.set(cKey, bounds);
+    }
+    globalThis.customBlocksChunkMapForSummerLab = map;
+  }
+
+  const customBounds = globalThis.customBlocksChunkMapForSummerLab.get(`${cx},${cz}`);
+  if (customBounds) {
+    minY = Math.min(minY, customBounds.minY);
+    maxY = Math.max(maxY, customBounds.maxY);
+  }
+
+  if (minY === Infinity) return null;
+  return { minY: Math.max(-10, minY - 2), maxY: Math.min(1500, maxY + 2) };
+}

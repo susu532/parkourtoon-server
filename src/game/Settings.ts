@@ -100,6 +100,7 @@ class SettingsManager {
 
     if (isMobileDevice) {
       this.settings.premiumShaders = false;
+      this.settings.performanceMode = true;
       this.settings.renderDistance = Math.min(this.settings.renderDistance, 1); // lowering default render distance for mobile
     }
 
@@ -121,10 +122,10 @@ class SettingsManager {
             );
           }
 
-          // Fix for returning mobile users who had performanceMode forced to true by default previously
-          if (isMobileDevice && !localStorage.getItem("v2_perf_reset_v3")) {
-            this.settings.performanceMode = false;
-            localStorage.setItem("v2_perf_reset_v3", "true");
+          // Force performanceMode to true by default for mobile users to fix lag
+          if (isMobileDevice && !localStorage.getItem("v4_perf_force_true")) {
+            this.settings.performanceMode = true;
+            localStorage.setItem("v4_perf_force_true", "true");
             localStorage.setItem(
               "game_settings_v2",
               JSON.stringify(this.settings),
@@ -155,12 +156,13 @@ class SettingsManager {
                 );
               }
 
+              // Force performanceMode to true by default for mobile users to fix lag
               if (
                 isMobileDevice &&
-                !localStorage.getItem("v2_perf_reset_v3_cg")
+                !localStorage.getItem("v4_perf_force_true_cg")
               ) {
-                this.settings.performanceMode = false;
-                localStorage.setItem("v2_perf_reset_v3_cg", "true");
+                this.settings.performanceMode = true;
+                localStorage.setItem("v4_perf_force_true_cg", "true");
                 try {
                   (window as any).CrazyGames.SDK.data.setItem(
                     "game_settings_v2",
