@@ -659,7 +659,7 @@ function buildRollerCoaster(cx: number, cy: number, cz: number) {
     const x = Math.floor(Math.sin(i / 2) * 5);
     const z = Math.floor(Math.cos(i / 2) * 5);
     const y = Math.floor(i / 3);
-    customBlocks.set(`${cx + x},${cy + 1 + y},${cz + z}`, ItemType.OAK_LOG);
+    customBlocks.set(`${cx + x},${cy + 1 + y},${cz + z}`, ItemType.OAK_WOOD);
     customBlocks.set(`${cx + x},${cy + 2 + y},${cz + z}`, ItemType.IRON_BLOCK);
   }
 }
@@ -684,7 +684,7 @@ function buildEscapeRoom(cx: number, cy: number, cz: number) {
 
 function buildParkourTower(cx: number, cy: number, cz: number) {
   for (let dy = 0; dy < 12; dy++) {
-    customBlocks.set(`${cx},${cy + 1 + dy},${cz}`, ItemType.OAK_LOG);
+    customBlocks.set(`${cx},${cy + 1 + dy},${cz}`, ItemType.OAK_WOOD);
     const rot = dy % 4;
     const dx = rot === 0 ? 2 : rot === 2 ? -2 : 0;
     const dz = rot === 1 ? 2 : rot === 3 ? -2 : 0;
@@ -786,7 +786,7 @@ function buildFlowerField(cx: number, cy: number, cz: number) {
       if (dx * dx + dz * dz < 60 && Math.random() < 0.4) {
         customBlocks.set(
           `${cx + dx},${cy + 1},${cz + dz}`,
-          Math.random() < 0.5 ? ItemType.DANDELION : ItemType.POPPY,
+          Math.random() < 0.5 ? ItemType.FLOWER_YELLOW : ItemType.FLOWER_RED,
         );
       }
     }
@@ -819,7 +819,7 @@ function buildBambooForest(cx: number, cy: number, cz: number) {
     const rz = cz + Math.floor(Math.random() * 12 - 6);
     const h = Math.floor(Math.random() * 6 + 4);
     for (let dy = 0; dy < h; dy++)
-      customBlocks.set(`${rx},${cy + 1 + dy},${rz}`, ItemType.SUGARCANE);
+      customBlocks.set(`${rx},${cy + 1 + dy},${rz}`, ItemType.SUGAR_CANE);
   }
 }
 

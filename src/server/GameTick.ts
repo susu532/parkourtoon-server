@@ -637,9 +637,9 @@ export function tick(ctx: GameContext, delta: number) {
                       22500,
                     );
                   } else {
-                    target.velocity.x = knockbackDir.x;
-                    target.velocity.z = knockbackDir.z;
-                    target.velocity.y = 1.5;
+                    target.velocity.x = knockbackDir.x * 0.5;
+                    target.velocity.z = knockbackDir.z * 0.5;
+                    target.velocity.y = 0.75;
                   }
                   pendingMobHits.push({
                     id: target.id || target.type,
@@ -723,12 +723,12 @@ export function tick(ctx: GameContext, delta: number) {
                             knockbackDir.z * knockbackDir.z,
                         ),
                       );
-                      const yLift = Math.min(8.0, 5.5 + (force - 8.0) * 0.5);
-                      target.velocity.x = knockbackDir.x;
-                      target.velocity.z = knockbackDir.z;
+                      const yLift = Math.min(4.0, 2.75 + (force - 8.0) * 0.25);
+                      target.velocity.x = knockbackDir.x * 0.5;
+                      target.velocity.z = knockbackDir.z * 0.5;
                       target.velocity.y = target.isBot
                         ? yLift
-                        : (target.velocity.y || 0) + 0.3;
+                        : (target.velocity.y || 0) + 0.15;
                     }
                     pendingPlayerUpdates.add(target.id); // Sync health
                     pendingHits.push({
@@ -851,6 +851,72 @@ export function tick(ctx: GameContext, delta: number) {
             ) > 0.1;
           pendingPlayerUpdates.add(id);
         }
+      }
+    }
+  }
+
+  // AFK Bot simple physics
+  for (const id in players) {
+    const p = players[id];
+    if (p && p.isAFKBot && !p.isDead) {
+      if (!p.velocity) p.velocity = { x: 0, y: 0, z: 0 };
+      
+      const dt = 0.05;
+      
+      const bx = Math.floor(p.position.x);
+      const by = Math.floor(p.position.y - 0.1);
+      const bz = Math.floor(p.position.z);
+      const onGround = isSolidBlock(getBlockAt(bx, by, bz));
+      
+      if (!onGround) {
+        p.velocity.y -= 1.0;
+      } else if (p.velocity.y <= 0) {
+        p.velocity.y = 0;
+        p.position.y = by + 1;
+      }
+      
+      const friction = onGround ? 0.7 : 0.92;
+      p.velocity.x *= friction;
+      p.velocity.z *= friction;
+      
+      if (Math.abs(p.velocity.x) > 0.001) p.position.x += p.velocity.x * dt;
+      if (isSolidBlock(getBlockAt(Math.floor(p.position.x), Math.floor(p.position.y), Math.floor(p.position.z)))) {
+          p.position.x -= p.velocity.x * dt;
+          p.velocity.x = 0;
+      }
+      
+      if (Math.abs(p.velocity.y) > 0.001) p.position.y += p.velocity.y * dt;
+      
+      if (Math.abs(p.velocity.z) > 0.001) p.position.z += p.velocity.z * dt;
+      if (isSolidBlock(getBlockAt(Math.floor(p.position.x), Math.floor(p.position.y), Math.floor(p.position.z)))) {
+          p.position.z -= p.velocity.z * dt;
+          p.velocity.z = 0;
+      }
+      
+      if (p.position.y < -20 || p.health === 0 || p.isDead) {
+        p.health = 100;
+        p.isDead = false;
+        
+        let pRespawnData = mode.getRespawnPosition(id, p, chunkManager, bakedBlocks);
+        p.position.x = pRespawnData.x;
+        p.position.y = pRespawnData.y;
+        p.position.z = pRespawnData.z;
+        p.velocity.x = 0;
+        p.velocity.y = 0;
+        p.velocity.z = 0;
+
+        pendingPlayerUpdates.add(id);
+        
+        ctx.ioNamespace.emit("playerStatus", {
+          id: id,
+          isDead: false,
+          health: 100,
+        });
+        continue;
+      }
+      
+      if (Math.abs(p.velocity.x) > 0.01 || Math.abs(p.velocity.y) > 0.01 || Math.abs(p.velocity.z) > 0.01) {
+          pendingPlayerUpdates.add(id);
       }
     }
   }

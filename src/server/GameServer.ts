@@ -410,6 +410,7 @@ export function createGameServer(
     maxHealth: 100,
     defense: 0,
     isBot: false,
+    isAFKBot: true,
     isDead: false,
     heldItem: 521,
     offHandItem: 0,

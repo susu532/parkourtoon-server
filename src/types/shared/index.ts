@@ -105,6 +105,7 @@ export interface IServerPlayer extends IPlayerUpdate {
   lastDropTime?: number;
   dropsInTick?: number;
   isBot?: boolean;
+  isAFKBot?: boolean;
 }
 
 export interface ISpawnParams {

@@ -548,6 +548,13 @@ export function setupSocketHandlers(ctx: GameContext) {
           if (actualDamage > 0) {
             target.lastDamageTime = Date.now();
             pendingPlayerUpdates.add(targetId);
+            if (target.isAFKBot || target.isBot) {
+              if (!target.velocity) target.velocity = { x: 0, y: 0, z: 0 };
+              const multiplier = target.isAFKBot ? 0.75 : 0.5;
+              target.velocity.x = serverKnockbackDir.x * multiplier;
+              target.velocity.z = serverKnockbackDir.z * multiplier;
+              target.velocity.y = target.isAFKBot ? 3.75 : 2.75; // Upward knockback
+            }
           }
           if (target.health < 0) target.health = 0;
           if (target.health === 0 && !target.isDead) {
