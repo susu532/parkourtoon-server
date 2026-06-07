@@ -19,35 +19,85 @@ const platformCache = new Map<
 >();
 const islandCache = new Map<number, { cx: number; cz: number; iy: number }>();
 const customBlocks = new Map<string, number>();
+const customBlockIntMap = new Map<number, number>();
 
 function buildGiantTree(cx: number, cy: number, cz: number) {
+  // Center trunk
   for (let dy = 0; dy < 15; dy++) {
-    for (let dx = -2; dx <= 2; dx++) {
-      for (let dz = -2; dz <= 2; dz++) {
-        if (dx * dx + dz * dz <= 4)
-          customBlocks.set(
-            `${cx + dx},${cy + 1 + dy},${cz + dz}`,
-            ItemType.WOOD,
-          );
-      }
-    }
-  }
-  for (let dy = 10; dy < 25; dy++) {
-    const isTop = dy > 18;
-    const rad = isTop ? 4 : 8;
-    for (let dx = -rad; dx <= rad; dx++) {
-      for (let dz = -rad; dz <= rad; dz++) {
+    const rad = Math.max(1.5, 3.5 - dy * 0.15);
+    for (let dx = -Math.ceil(rad); dx <= Math.ceil(rad); dx++) {
+      for (let dz = -Math.ceil(rad); dz <= Math.ceil(rad); dz++) {
         if (dx * dx + dz * dz <= rad * rad) {
-          if (!customBlocks.has(`${cx + dx},${cy + 1 + dy},${cz + dz}`)) {
-            customBlocks.set(
-              `${cx + dx},${cy + 1 + dy},${cz + dz}`,
-              ItemType.LEAVES,
-            );
-          }
+          customBlocks.set(`${cx + dx},${cy + 1 + dy},${cz + dz}`, ItemType.WOOD);
         }
       }
     }
   }
+
+  // Draw a branch
+  const drawBranch = (bx: number, by: number, bz: number, dx: number, dy: number, dz: number, len: number, isMain: boolean) => {
+    let px = bx, py = by, pz = bz;
+    for (let i = 0; i < len; i++) {
+        px += dx;
+        py += dy;
+        pz += dz;
+
+        // Droop down for the last half of the branch if it's long
+        if (i > len * 0.6 && isMain) {
+            py -= 0.2;
+        } else if (!isMain && i > len * 0.5) {
+            py -= 0.1;
+        }
+
+        const ix = Math.floor(px);
+        const iy = Math.floor(py);
+        const iz = Math.floor(pz);
+
+        const r = Math.max(0.5, 2 - (i / len) * 2);
+        for(let rx = -Math.ceil(r); rx <= Math.ceil(r); rx++) {
+             for(let rz = -Math.ceil(r); rz <= Math.ceil(r); rz++) {
+                 if (rx * rx + rz * rz <= r * r) {
+                      customBlocks.set(`${ix + rx},${iy},${iz + rz}`, ItemType.WOOD);
+                 }
+             }
+        }
+
+        // Add leaves around the branch
+        if (i > len * 0.3 && (i % 2 === 0 || i === len - 1)) {
+            const leafR = isMain ? 3 : 2; // drastically reduced from 5 to prevent OOM
+            for(let lx = -leafR; lx <= leafR; lx++) {
+                for(let ly = -1; ly <= 2; ly++) {
+                    for(let lz = -leafR; lz <= leafR; lz++) {
+                        if (lx * lx + Math.pow(ly*1.2, 2) + lz * lz <= leafR * leafR) {
+                            const key = `${ix + lx},${iy + ly},${iz + lz}`;
+                            if (!customBlocks.has(key)) {
+                                customBlocks.set(key, ItemType.LEAVES);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+  };
+
+  // Main spreading branches (like an elm or oak)
+  const numBranches = 5;
+  for (let i = 0; i < numBranches; i++) {
+     const angle = (i / numBranches) * Math.PI * 2;
+     // The length of branches should be quite long to match the sprawling image
+     drawBranch(cx, cy + 8, cz, Math.cos(angle) * 1.5, 0.4, Math.sin(angle) * 1.5, 10, true);
+  }
+
+  // Upper branches for the main crown
+  const numUpperBranches = 4;
+  for(let i = 0; i < numUpperBranches; i++) {
+     const angle = (i / numUpperBranches) * Math.PI * 2 + 0.5;
+     drawBranch(cx, cy + 13, cz, Math.cos(angle) * 1.1, 0.7, Math.sin(angle) * 1.1, 8, false);
+  }
+
+  // Top crown
+  drawBranch(cx, cy + 14, cz, 0, 1, 0, 6, false);
 }
 
 function buildMedievalCastle(cx: number, cy: number, cz: number) {
@@ -1145,6 +1195,17 @@ function precomputePlatforms() {
     // deltaTheta = L / r
     theta += 2.6 / r;
   }
+
+  for (const [k, v] of customBlocks) {
+    const coords = k.split(',');
+    const bx = parseInt(coords[0], 10);
+    const by = parseInt(coords[1], 10);
+    const bz = parseInt(coords[2], 10);
+    if (bx >= -500 && bx <= 500 && bz >= -500 && bz <= 500) {
+      const key = (bx + 500) + ((bz + 500) * 1000) + (by * 1000000);
+      customBlockIntMap.set(key, v);
+    }
+  }
 }
 
 export function getSummerLabBlock(x: number, y: number, z: number): number {
@@ -1176,27 +1237,33 @@ export function getSummerLabBlock(x: number, y: number, z: number): number {
     precomputePlatforms();
 
     // Check custom blocks
-    const customBlock = customBlocks.get(`${x},${y},${z}`);
+    let customBlock: number | undefined;
+    if (x >= -500 && x <= 500 && z >= -500 && z <= 500) {
+      customBlock = customBlockIntMap.get((x + 500) + ((z + 500) * 1000) + (y * 1000000));
+    } else {
+      customBlock = customBlocks.get(`${x},${y},${z}`);
+    }
     if (customBlock) return customBlock;
 
     // Check islands
     // Find if y is within the top 10 blocks of any island
-    // Quick math: y modulo 30 could be near 1.
-    // Let's iterate all cached islands (small number, 500/30 = ~16 islands)
-    for (const [iy, island] of islandCache.entries()) {
-      if (y <= iy && y >= iy - 9) {
+    // Find the closest potential island iy
+    const closestIy = Math.ceil((y - 1) / 30) * 30 + 1;
+    if (y <= closestIy && y >= closestIy - 9) {
+      const island = islandCache.get(closestIy);
+      if (island) {
         const dx = x - island.cx;
         const dz = z - island.cz;
         const distSq = dx * dx + dz * dz;
 
         const maxRadius = 20;
-        const depthScale = 1.0 - Math.abs(y - iy) / 10;
+        const depthScale = 1.0 - Math.abs(y - closestIy) / 10;
         const radiusAtDepth = maxRadius * depthScale;
 
         if (distSq <= radiusAtDepth * radiusAtDepth) {
-          if (y === iy) {
+          if (y === closestIy) {
             return ItemType.CONCRETE_WHITE;
-          } else if (y > iy - 3) {
+          } else if (y > closestIy - 3) {
             return ItemType.DIRT;
           } else {
             return ItemType.STONE;

@@ -1,6 +1,6 @@
-import { ItemType } from './Inventory';
-import colorsData from '../../data/colors.json';
-import namesData from '../../data/names.json';
+import { ItemType } from "./Inventory";
+import colorsData from "../../data/colors.json";
+import namesData from "../../data/names.json";
 
 export enum MobTypes {
   ZOMBIE = "Zombie",

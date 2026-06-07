@@ -1,5 +1,5 @@
-import { ItemMetadata, Rarity } from './SkyBridgeManager';
-import { useGameStore } from '../store/gameStore';
+import { ItemMetadata, Rarity } from "./SkyBridgeManager";
+import { useGameStore } from "../store/gameStore";
 
 export enum ItemType {
   AIR = 0,
@@ -512,9 +512,12 @@ export enum ItemType {
   CONCRETE_SANDY_BEIGE = 540,
   CONCRETE_CHOCOLATE = 541,
   CONCRETE_DEEP_BLUE = 542,
-};
+}
 
-export const isChest = (type: number) => type === ItemType.CHEST || type === ItemType.ENDER_CHEST || type === ItemType.CHEST_REVERSED;
+export const isChest = (type: number) =>
+  type === ItemType.CHEST ||
+  type === ItemType.ENDER_CHEST ||
+  type === ItemType.CHEST_REVERSED;
 
 export interface ItemStack {
   type: ItemType;
@@ -529,21 +532,26 @@ export interface Recipe {
   shapeless?: boolean;
 }
 
-import recipesData from '../../data/recipes.json';
+import recipesData from "../../data/recipes.json";
 
 export const RECIPES: Recipe[] = recipesData.map((r: any) => ({
-  input: r.input.map((typeStr: string | null) => typeStr ? (ItemType as any)[typeStr] ?? null : null),
+  input: r.input.map((typeStr: string | null) =>
+    typeStr ? ((ItemType as any)[typeStr] ?? null) : null,
+  ),
   output: {
     ...r.output,
-    type: (ItemType as any)[r.output.type] ?? r.output.type
+    type: (ItemType as any)[r.output.type] ?? r.output.type,
   },
   is3x3: r.is3x3,
-  shapeless: r.shapeless
+  shapeless: r.shapeless,
 }));
 
-export function checkRecipe(grid: (ItemType | null)[], is3x3: boolean): ItemStack | null {
+export function checkRecipe(
+  grid: (ItemType | null)[],
+  is3x3: boolean,
+): ItemStack | null {
   const size = is3x3 ? 3 : 2;
-  
+
   // Shapeless check first
   const gridCounts = new Map<ItemType, number>();
   let gridTotal = 0;
@@ -582,7 +590,10 @@ export function checkRecipe(grid: (ItemType | null)[], is3x3: boolean): ItemStac
 
     // Shaped logic
     // Find the bounding box of the items in the grid
-    let minX = size, minY = size, maxX = -1, maxY = -1;
+    let minX = size,
+      minY = size,
+      maxX = -1,
+      maxY = -1;
     let itemCount = 0;
 
     for (let y = 0; y < size; y++) {
@@ -601,7 +612,7 @@ export function checkRecipe(grid: (ItemType | null)[], is3x3: boolean): ItemStac
 
     const width = maxX - minX + 1;
     const height = maxY - minY + 1;
-    
+
     // Extract the normalized pattern
     const pattern: (ItemType | null)[] = [];
     for (let y = minY; y <= maxY; y++) {
@@ -609,10 +620,13 @@ export function checkRecipe(grid: (ItemType | null)[], is3x3: boolean): ItemStac
         pattern.push(grid[y * size + x]);
       }
     }
-    
+
     // Check if dimensions match
     const rSize = Math.sqrt(recipe.input.length);
-    let rMinX = rSize, rMinY = rSize, rMaxX = -1, rMaxY = -1;
+    let rMinX = rSize,
+      rMinY = rSize,
+      rMaxX = -1,
+      rMaxY = -1;
     let rItemCount = 0;
 
     for (let y = 0; y < rSize; y++) {
@@ -655,7 +669,9 @@ export function checkRecipe(grid: (ItemType | null)[], is3x3: boolean): ItemStac
 
 export function getDefaultMetadata(type: ItemType): ItemMetadata | undefined {
   // Find a recipe that produces this item type and has metadata
-  const recipe = RECIPES.find(r => r.output.type === type && r.output.metadata);
+  const recipe = RECIPES.find(
+    (r) => r.output.type === type && r.output.metadata,
+  );
   if (recipe) return JSON.parse(JSON.stringify(recipe.output.metadata));
 
   // Hardcoded defaults for special items if not in recipes
@@ -663,12 +679,14 @@ export function getDefaultMetadata(type: ItemType): ItemMetadata | undefined {
     return {
       rarity: Rarity.RARE,
       stats: { damage: 80, strength: 60 },
-      description: "Teleport 8 blocks ahead of you and gain +50 Speed for 3 seconds.",
+      description:
+        "Teleport 8 blocks ahead of you and gain +50 Speed for 3 seconds.",
       ability: {
         name: "Instant Transmission",
-        description: "Teleport 8 blocks ahead of you and gain +50 Speed for 3 seconds.",
-        manaCost: 50
-      }
+        description:
+          "Teleport 8 blocks ahead of you and gain +50 Speed for 3 seconds.",
+        manaCost: 50,
+      },
     };
   }
 
@@ -678,11 +696,35 @@ export function getDefaultMetadata(type: ItemType): ItemMetadata | undefined {
 export function getMaxStack(type: ItemType): number {
   if (type === ItemType.SKYCOIN) return 999999999;
   const unstackable = [
-    ItemType.WOODEN_PICKAXE, ItemType.STONE_PICKAXE, ItemType.IRON_PICKAXE, ItemType.GOLDEN_PICKAXE, ItemType.DIAMOND_PICKAXE,
-    ItemType.WOODEN_SWORD, ItemType.STONE_SWORD, ItemType.IRON_SWORD, ItemType.GOLDEN_SWORD, ItemType.DIAMOND_SWORD,
-    ItemType.WOODEN_SHOVEL, ItemType.STONE_SHOVEL, ItemType.IRON_SHOVEL, ItemType.GOLDEN_SHOVEL, ItemType.DIAMOND_SHOVEL,
-    ItemType.WOODEN_AXE, ItemType.STONE_AXE, ItemType.IRON_AXE, ItemType.GOLDEN_AXE, ItemType.DIAMOND_AXE,
-    ItemType.ASPECT_OF_THE_END, ItemType.MINION, ItemType.BOW, ItemType.FISHING_ROD, ItemType.BUCKET, ItemType.WATER_BUCKET, ItemType.LAVA_BUCKET, ItemType.FLUID_CHOCOLATE_HOSE, ItemType.WASHING_HOSE
+    ItemType.WOODEN_PICKAXE,
+    ItemType.STONE_PICKAXE,
+    ItemType.IRON_PICKAXE,
+    ItemType.GOLDEN_PICKAXE,
+    ItemType.DIAMOND_PICKAXE,
+    ItemType.WOODEN_SWORD,
+    ItemType.STONE_SWORD,
+    ItemType.IRON_SWORD,
+    ItemType.GOLDEN_SWORD,
+    ItemType.DIAMOND_SWORD,
+    ItemType.WOODEN_SHOVEL,
+    ItemType.STONE_SHOVEL,
+    ItemType.IRON_SHOVEL,
+    ItemType.GOLDEN_SHOVEL,
+    ItemType.DIAMOND_SHOVEL,
+    ItemType.WOODEN_AXE,
+    ItemType.STONE_AXE,
+    ItemType.IRON_AXE,
+    ItemType.GOLDEN_AXE,
+    ItemType.DIAMOND_AXE,
+    ItemType.ASPECT_OF_THE_END,
+    ItemType.MINION,
+    ItemType.BOW,
+    ItemType.FISHING_ROD,
+    ItemType.BUCKET,
+    ItemType.WATER_BUCKET,
+    ItemType.LAVA_BUCKET,
+    ItemType.FLUID_CHOCOLATE_HOSE,
+    ItemType.WASHING_HOSE,
   ];
   return unstackable.includes(type) ? 1 : 64;
 }
@@ -695,21 +737,22 @@ export class Inventory {
 
   damageItem(slotIndex: number, amount: number = 1): boolean {
     const item = this.slots[slotIndex];
-    if (!item || !item.metadata || item.metadata.durability === undefined) return false;
-    
+    if (!item || !item.metadata || item.metadata.durability === undefined)
+      return false;
+
     const newDurability = item.metadata.durability - amount;
     if (newDurability <= 0) {
-       this.slots[slotIndex] = null;
-       useGameStore.getState().incrementInventoryVersion();
-       return true; // Item broke
+      this.slots[slotIndex] = null;
+      useGameStore.getState().incrementInventoryVersion();
+      return true; // Item broke
     }
-    
+
     this.slots[slotIndex] = {
       ...item,
       metadata: {
         ...item.metadata,
-        durability: newDurability
-      }
+        durability: newDurability,
+      },
     };
     useGameStore.getState().incrementInventoryVersion();
     return false; // Did not break
@@ -727,50 +770,77 @@ export class Inventory {
       this.addItem(ItemType.CHEST, 64, undefined, true);
       this.addItem(ItemType.BOW, 1, undefined, true);
       this.addItem(ItemType.ARROW, 64, undefined, true);
-      
+
       // Add some SkyBridge items
-      this.addItem(ItemType.ASPECT_OF_THE_END, 1, {
-      rarity: Rarity.RARE,
-      stats: { damage: 80, strength: 60 },
-      description: "Teleport 8 blocks ahead of you and gain +50 Speed for 3 seconds.",
-      ability: {
-        name: "Instant Transmission",
-        description: "Teleport 8 blocks ahead of you and gain +50 Speed for 3 seconds.",
-        manaCost: 50
-      }
-    }, true);
+      this.addItem(
+        ItemType.ASPECT_OF_THE_END,
+        1,
+        {
+          rarity: Rarity.RARE,
+          stats: { damage: 80, strength: 60 },
+          description:
+            "Teleport 8 blocks ahead of you and gain +50 Speed for 3 seconds.",
+          ability: {
+            name: "Instant Transmission",
+            description:
+              "Teleport 8 blocks ahead of you and gain +50 Speed for 3 seconds.",
+            manaCost: 50,
+          },
+        },
+        true,
+      );
 
-    this.addItem(ItemType.BLUE_STONE, 1, {
-      rarity: Rarity.RARE,
-      stats: { strength: 10, critChance: 5, miningFortune: 150, miningSpeed: 100 },
-      description: "A powerful stone from the deep caverns.",
-      ability: {
-        name: "Deep Strike",
-        description: "Dash forward with extreme speed.",
-        manaCost: 40
-      }
-    }, true);
+      this.addItem(
+        ItemType.BLUE_STONE,
+        1,
+        {
+          rarity: Rarity.RARE,
+          stats: {
+            strength: 10,
+            critChance: 5,
+            miningFortune: 150,
+            miningSpeed: 100,
+          },
+          description: "A powerful stone from the deep caverns.",
+          ability: {
+            name: "Deep Strike",
+            description: "Dash forward with extreme speed.",
+            manaCost: 40,
+          },
+        },
+        true,
+      );
 
-    this.addItem(ItemType.RED_STONE, 1, {
-      rarity: Rarity.LEGENDARY,
-      stats: { health: 50, defense: 20 },
-      description: "Infused with the essence of a dragon.",
-      ability: {
-        name: "Dragon's Breath",
-        description: "Creates a blast of fire around the player.",
-        manaCost: 100,
-        cooldown: 10
-      }
-    }, true);
+      this.addItem(
+        ItemType.RED_STONE,
+        1,
+        {
+          rarity: Rarity.LEGENDARY,
+          stats: { health: 50, defense: 20 },
+          description: "Infused with the essence of a dragon.",
+          ability: {
+            name: "Dragon's Breath",
+            description: "Creates a blast of fire around the player.",
+            manaCost: 100,
+            cooldown: 10,
+          },
+        },
+        true,
+      );
 
-    this.addItem(ItemType.MINION, 1, {
-      rarity: Rarity.RARE,
-      description: "Places a minion that generates cobblestone.",
-      ability: {
-        name: "Automate",
-        description: "Generates 1 cobblestone every 10 seconds."
-      }
-    }, true);
+      this.addItem(
+        ItemType.MINION,
+        1,
+        {
+          rarity: Rarity.RARE,
+          description: "Places a minion that generates cobblestone.",
+          ability: {
+            name: "Automate",
+            description: "Generates 1 cobblestone every 10 seconds.",
+          },
+        },
+        true,
+      );
     }
   }
 
@@ -779,7 +849,12 @@ export class Inventory {
     useGameStore.getState().incrementInventoryVersion();
   }
 
-  addItem(type: ItemType, count: number, metadata?: ItemMetadata, silent: boolean = false): number {
+  addItem(
+    type: ItemType,
+    count: number,
+    metadata?: ItemMetadata,
+    silent: boolean = false,
+  ): number {
     if (type === ItemType.SKYCOIN) {
       if (!silent) useGameStore.getState().addSkycoins(count);
       return 0;
@@ -787,18 +862,19 @@ export class Inventory {
 
     let remaining = count;
     const maxStack = getMaxStack(type);
-    
+
     // Auto-apply default metadata if missing
     const finalMetadata = metadata || getDefaultMetadata(type);
-    
+
     // Try to stack
     for (let i = 0; i < this.slots.length; i++) {
       const slot = this.slots[i];
       if (slot && slot.type === type && slot.count < maxStack) {
         // Check if metadata matches
-        const metadataMatch = (!slot.metadata && !finalMetadata) || 
-                             (JSON.stringify(slot.metadata) === JSON.stringify(finalMetadata));
-        
+        const metadataMatch =
+          (!slot.metadata && !finalMetadata) ||
+          JSON.stringify(slot.metadata) === JSON.stringify(finalMetadata);
+
         if (metadataMatch) {
           const canAdd = Math.min(remaining, maxStack - slot.count);
           if (canAdd > 0) {
