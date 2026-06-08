@@ -25,6 +25,7 @@ export class Chunk {
   mesh: THREE.Mesh | null = null;
   transparentMesh: THREE.Mesh | null = null;
   needsUpdate: boolean = true;
+  lastMeshedPlayerY: number | undefined;
 
   constructor(x: number, z: number) {
     this.x = x;
