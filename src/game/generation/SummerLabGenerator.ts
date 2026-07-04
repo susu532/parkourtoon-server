@@ -1261,13 +1261,24 @@ export function getSummerLabBlock(x: number, y: number, z: number): number {
         const radiusAtDepth = maxRadius * depthScale;
 
         if (distSq <= radiusAtDepth * radiusAtDepth) {
-          if (y === closestIy) {
-            return ItemType.CONCRETE_WHITE;
-          } else if (y > closestIy - 3) {
-            return ItemType.DIRT;
-          } else {
-            return ItemType.STONE;
-          }
+          const islandColors = [
+            ItemType.CONCRETE_RED,
+            ItemType.CONCRETE_ORANGE,
+            ItemType.CONCRETE_YELLOW,
+            ItemType.CONCRETE_LIME,
+            ItemType.CONCRETE_GREEN,
+            ItemType.CONCRETE_CYAN,
+            ItemType.CONCRETE_LIGHT_BLUE,
+            ItemType.CONCRETE_BLUE,
+            ItemType.CONCRETE_PURPLE,
+            ItemType.CONCRETE_MAGENTA,
+            ItemType.CONCRETE_PINK,
+            ItemType.CONCRETE_NEON_YELLOW,
+            ItemType.CONCRETE_MINT,
+            ItemType.CONCRETE_LAVENDER
+          ];
+          const level = Math.round(closestIy / 30);
+          return islandColors[level % islandColors.length];
         }
       }
     }

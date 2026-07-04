@@ -824,6 +824,11 @@ export function setupSocketHandlers(ctx: GameContext) {
         // Broadcast the emoji change to everyone immediately via playerJoined
         ioNamespace.emit("playerJoined", p);
       }
+      if (p.currentEmote !== state.currentEmote) {
+        p.currentEmote = state.currentEmote;
+        changed = true;
+        ioNamespace.emit("playerJoined", p);
+      }
       if (state.maxHealth !== undefined && p.maxHealth !== state.maxHealth) {
         p.maxHealth = state.maxHealth;
         changed = true;

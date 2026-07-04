@@ -63,6 +63,7 @@ export interface IPlayerUpdate {
   skinSeed?: string;
   skills?: any;
   currentEmoji?: string;
+  currentEmote?: string;
 }
 
 export interface IServerPlayer extends IPlayerUpdate {
