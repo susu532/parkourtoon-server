@@ -1,20 +1,8 @@
-import * as THREE from "three";
-import {
-  BLOCK,
-  getBlockUVs,
-  isTransparent,
-  isCutout,
-  isSolidBlock,
-  isSlab,
-  isWater,
-  ATLAS_TILES,
-  isPlant,
-  isLeaves,
-  isAnyTorch,
-} from "./TextureAtlas";
+import * as THREE from 'three';
+import { BLOCK, getBlockUVs, isTransparent, isCutout, isSolidBlock, isSlab, isWater, ATLAS_TILES, isPlant, isLeaves, isAnyTorch } from './TextureAtlas';
 
 export const CHUNK_SIZE = 16;
-export const CHUNK_HEIGHT = 1600;
+export const CHUNK_HEIGHT = 1664;
 export const WORLD_Y_OFFSET = -60;
 
 export class Chunk {
@@ -25,8 +13,7 @@ export class Chunk {
   mesh: THREE.Mesh | null = null;
   transparentMesh: THREE.Mesh | null = null;
   needsUpdate: boolean = true;
-  lastMeshedPlayerY: number | undefined;
-
+  
   constructor(x: number, z: number) {
     this.x = x;
     this.z = z;
@@ -39,28 +26,14 @@ export class Chunk {
   }
 
   getBlock(x: number, y: number, z: number) {
-    if (
-      x < 0 ||
-      x >= CHUNK_SIZE ||
-      y < 0 ||
-      y >= CHUNK_HEIGHT ||
-      z < 0 ||
-      z >= CHUNK_SIZE
-    ) {
+    if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_SIZE) {
       return BLOCK.AIR;
     }
     return this.blocks[x | (z << 4) | (y << 8)];
   }
 
   getLight(x: number, y: number, z: number) {
-    if (
-      x < 0 ||
-      x >= CHUNK_SIZE ||
-      y < 0 ||
-      y >= CHUNK_HEIGHT ||
-      z < 0 ||
-      z >= CHUNK_SIZE
-    ) {
+    if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_SIZE) {
       return 15;
     }
     return this.light[x | (z << 4) | (y << 8)];
@@ -75,14 +48,7 @@ export class Chunk {
   }
 
   setBlock(x: number, y: number, z: number, type: number) {
-    if (
-      x < 0 ||
-      x >= CHUNK_SIZE ||
-      y < 0 ||
-      y >= CHUNK_HEIGHT ||
-      z < 0 ||
-      z >= CHUNK_SIZE
-    ) {
+    if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_SIZE) {
       return;
     }
     this.blocks[x | (z << 4) | (y << 8)] = type;
@@ -91,43 +57,23 @@ export class Chunk {
 
   isMeshing: boolean = false;
 
-  applyMesh(
-    opaque: any,
-    transparent: any,
-    opaqueMaterial: THREE.Material,
-    transparentMaterial: THREE.Material,
-    opaqueDepthMaterial: THREE.MeshDepthMaterial,
-    transparentDepthMaterial: THREE.MeshDepthMaterial,
-    performanceMode: boolean = false,
-  ) {
-    this.needsUpdate = false;
 
-    const updateMesh = (
-      layer: any,
-      mesh: THREE.Mesh | null,
-      material: THREE.Material,
-    ) => {
+  applyMesh(opaque: any, transparent: any, opaqueMaterial: THREE.Material, transparentMaterial: THREE.Material, opaqueDepthMaterial: THREE.MeshDepthMaterial, transparentDepthMaterial: THREE.MeshDepthMaterial, performanceMode: boolean = false) {
+    this.needsUpdate = false;
+    
+    const updateMesh = (layer: any, mesh: THREE.Mesh | null, material: THREE.Material) => {
       if (!layer || layer.positions.length === 0) {
-        if (mesh) {
-          mesh.geometry.dispose();
-          mesh.parent?.remove(mesh);
-        }
+        if (mesh) { mesh.geometry.dispose(); mesh.parent?.remove(mesh); }
         return null;
       }
-
+      
       const geo = new THREE.BufferGeometry();
-      geo.setAttribute(
-        "position",
-        new THREE.BufferAttribute(layer.positions, 3),
-      );
-      geo.setAttribute("normal", new THREE.BufferAttribute(layer.normals, 3));
-      geo.setAttribute("uv", new THREE.BufferAttribute(layer.uvs, 2));
-      geo.setAttribute(
-        "aTileBase",
-        new THREE.BufferAttribute(layer.tileBases, 2),
-      );
-      geo.setAttribute("color", new THREE.BufferAttribute(layer.colors, 3));
-      geo.setAttribute("aSway", new THREE.BufferAttribute(layer.sways, 1));
+      geo.setAttribute('position', new THREE.BufferAttribute(layer.positions, 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(layer.normals, 3));
+      geo.setAttribute('uv', new THREE.BufferAttribute(layer.uvs, 2));
+      geo.setAttribute('aTileBase', new THREE.BufferAttribute(layer.tileBases, 2));
+      geo.setAttribute('color', new THREE.BufferAttribute(layer.colors, 3));
+      geo.setAttribute('aSway', new THREE.BufferAttribute(layer.sways, 1));
       geo.setIndex(new THREE.BufferAttribute(layer.indices, 1));
 
       if (mesh) {
@@ -144,11 +90,7 @@ export class Chunk {
       }
 
       const newMesh = new THREE.Mesh(geo, material);
-      newMesh.position.set(
-        this.x * CHUNK_SIZE,
-        WORLD_Y_OFFSET,
-        this.z * CHUNK_SIZE,
-      );
+      newMesh.position.set(this.x * CHUNK_SIZE, WORLD_Y_OFFSET, this.z * CHUNK_SIZE);
       newMesh.castShadow = false;
       newMesh.receiveShadow = false;
       if (layer === opaque) {
@@ -160,16 +102,13 @@ export class Chunk {
     };
 
     this.mesh = updateMesh(opaque, this.mesh, opaqueMaterial);
-    this.transparentMesh = updateMesh(
-      transparent,
-      this.transparentMesh,
-      transparentMaterial,
-    );
-
+    this.transparentMesh = updateMesh(transparent, this.transparentMesh, transparentMaterial);
+    
     if (this.transparentMesh) {
       this.transparentMesh.castShadow = false;
       this.transparentMesh.receiveShadow = false;
     }
     this.isMeshing = false;
   }
+
 }

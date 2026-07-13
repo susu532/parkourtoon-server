@@ -64,11 +64,13 @@ export interface IPlayerUpdate {
   skills?: any;
   currentEmoji?: string;
   currentEmote?: string;
+  grapplePoint?: { x: number; y: number; z: number } | null;
 }
 
 export interface IServerPlayer extends IPlayerUpdate {
   position: { x: number; y: number; z: number };
   velocity?: { x: number; y: number; z: number };
+  knockbackVelocity?: { x: number; y: number; z: number };
   rotation: { x: number; y: number; z?: number };
   health: number;
   maxHealth?: number;
@@ -107,6 +109,7 @@ export interface IServerPlayer extends IPlayerUpdate {
   dropsInTick?: number;
   isBot?: boolean;
   isAFKBot?: boolean;
+  summerLabRespawn?: { x: number; y: number; z: number; yaw: number; iy: number };
 }
 
 export interface ISpawnParams {
@@ -145,4 +148,7 @@ export interface IGameStateData {
   droppedItems?: Record<string, IDroppedItemState>;
   npcs?: any[];
   dayTime?: number;
+  gameStartTime?: number;
+  isWaterPark?: boolean;
+  phase?: number;
 }

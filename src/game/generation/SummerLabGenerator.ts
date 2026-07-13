@@ -1274,7 +1274,7 @@ export function getSummerLabBlock(x: number, y: number, z: number): number {
             ItemType.CONCRETE_MAGENTA,
             ItemType.CONCRETE_PINK,
             ItemType.CONCRETE_NEON_YELLOW,
-            ItemType.CONCRETE_MINT,
+            ItemType.CONCRETE_MINT_CREAM,
             ItemType.CONCRETE_LAVENDER
           ];
           const level = Math.round(closestIy / 30);
@@ -1374,9 +1374,9 @@ export function updateSummerLabCheckpoints(
               const nZ = dirZ / (dist || 1);
 
               p.summerLabRespawn = {
-                x: island.cx - nX * 14,
+                x: island.cx - nX * 18,
                 y: iy + 1,
-                z: island.cz - nZ * 14,
+                z: island.cz - nZ * 18,
                 yaw: Math.atan2(nX, nZ),
                 iy,
               };
@@ -1465,7 +1465,7 @@ export function getSummerLabChunkBounds(cx: number, cz: number): { minY: number,
 
   // Custom blocks bounds check is tricky, so we'll just check if any custom block is in this chunk.
   // We can pre-calculate chunk custom block presence!
-  if (!globalThis.customBlocksChunkMapForSummerLab) {
+  if (!(globalThis as any).customBlocksChunkMapForSummerLab) {
     const map = new Map<string, { minY: number, maxY: number }>();
     for (const [key, _] of customBlocks.entries()) {
       const parts = key.split(",");
@@ -1496,10 +1496,10 @@ export function getSummerLabChunkBounds(cx: number, cz: number): { minY: number,
       bounds.maxY = Math.max(bounds.maxY, y);
       map.set(cKey, bounds);
     }
-    globalThis.customBlocksChunkMapForSummerLab = map;
+    (globalThis as any).customBlocksChunkMapForSummerLab = map;
   }
 
-  const customBounds = globalThis.customBlocksChunkMapForSummerLab.get(`${cx},${cz}`);
+  const customBounds = (globalThis as any).customBlocksChunkMapForSummerLab.get(`${cx},${cz}`);
   if (customBounds) {
     minY = Math.min(minY, customBounds.minY);
     maxY = Math.max(maxY, customBounds.maxY);
@@ -1508,3 +1508,41 @@ export function getSummerLabChunkBounds(cx: number, cz: number): { minY: number,
   if (minY === Infinity) return null;
   return { minY: Math.max(-10, minY - 2), maxY: Math.min(1500, maxY + 2) };
 }
+
+export function generateSummerLabColumn(chunk: any, x: number, z: number, worldX: number, worldZ: number): void {
+  const bounds = getSummerLabChunkBounds(worldX >> 4, worldZ >> 4);
+  if (!bounds) return;
+
+  for (let fy = bounds.minY; fy <= bounds.maxY; fy++) {
+    const y = fy - (-60);
+    if (y < 0 || y >= 1664) continue;
+
+    const baseBlock = getSummerLabBlock(worldX, fy, worldZ);
+    if (baseBlock !== 0) { // ItemType.AIR is 0
+      chunk.setBlockFast(x, y, z, baseBlock);
+    }
+  }
+}
+
+export function isSummerLabPlatform(x: number, y: number, z: number): boolean {
+  const plat = platformCache.get(y);
+  if (!plat) return false;
+  
+  const { px, pz, theta } = plat;
+  if (Math.abs(x - px) <= 2 && Math.abs(z - pz) <= 2) {
+    const tangentX = -Math.sin(theta);
+    const tangentZ = Math.cos(theta);
+    let inPlatform = false;
+    // Make it a 2x1 platform along the tangent direction (jump direction)
+    if (Math.abs(tangentX) > Math.abs(tangentZ)) {
+      const stepX = tangentX >= 0 ? 1 : -1;
+      inPlatform = z === pz && (x === px || x === px + stepX);
+    } else {
+      const stepZ = tangentZ >= 0 ? 1 : -1;
+      inPlatform = x === px && (z === pz || z === pz + stepZ);
+    }
+    return inPlatform;
+  }
+  return false;
+}
+
