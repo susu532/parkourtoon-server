@@ -1,7 +1,7 @@
 import { ItemType } from '../game/Inventory';
 
 export const CHUNK_SIZE = 16;
-export const CHUNK_HEIGHT = 384;
+export const CHUNK_HEIGHT = 1664;
 export const WORLD_Y_OFFSET = -60;
 
 export const BLOCK = ItemType;
