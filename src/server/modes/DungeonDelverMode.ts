@@ -4,9 +4,7 @@ import { ChunkManager } from "../ChunkManager";
 import { noise2D, noise3D, biomes } from "../../game/TerrainGenerator";
 import dungeonBakedBlocksData from "../../../data/dungeonBakedBlocks.json";
 
-const dungeonBakedBlocks = new Map<string, number>(
-  Object.entries(dungeonBakedBlocksData),
-);
+const dungeonBakedBlocks = new Map<string, number>(Object.entries(dungeonBakedBlocksData));
 
 export class DungeonDelverMode implements GameModeInfo {
   name = "/dungeondelver";
@@ -20,14 +18,9 @@ export class DungeonDelverMode implements GameModeInfo {
     z: number,
     bakedBlocks: Map<string, number>,
   ): boolean {
-    if (Math.floor(x) === 0 && Math.floor(y) === 0 && Math.floor(z) === 0)
-      return true;
+    if (Math.floor(x) === 0 && Math.floor(y) === 0 && Math.floor(z) === 0) return true;
     const blockKey = `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
-    if (
-      dungeonBakedBlocks.has(blockKey) &&
-      dungeonBakedBlocks.get(blockKey) !== 0
-    )
-      return true;
+    if (dungeonBakedBlocks.has(blockKey) && dungeonBakedBlocks.get(blockKey) !== 0) return true;
 
     if (y <= -2 || y >= 7) return true;
     return false;
@@ -54,8 +47,7 @@ export class DungeonDelverMode implements GameModeInfo {
     if (chunkType !== undefined) return chunkType;
 
     const blockKey = `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
-    if (dungeonBakedBlocks.has(blockKey))
-      return dungeonBakedBlocks.get(blockKey)!;
+    if (dungeonBakedBlocks.has(blockKey)) return dungeonBakedBlocks.get(blockKey)!;
 
     // Remove block generation outside playable bounds for performance
     if (y < -2 || y > 7) return BLOCK.AIR;
@@ -69,10 +61,10 @@ export class DungeonDelverMode implements GameModeInfo {
     // Outer bedrock/floor limits
     if (y < -2) return BLOCK.OBSIDIAN; // This line won't be reached because of the if above, but leaving it or changing it is fine.
 
+
     // Spawn Room (safe area)
     const distSq = x * x + z * z;
-    if (distSq < 100) {
-      // Radius 10
+    if (distSq < 100) { // Radius 10
       // Put a solid chest at 0, 0, 0
       if (Math.floor(x) === 0 && Math.floor(y) === 0 && Math.floor(z) === 0) {
         return BLOCK.CHEST;
@@ -85,7 +77,7 @@ export class DungeonDelverMode implements GameModeInfo {
       }
       if (y < -1) return BLOCK.STONE;
       if (y > 5) return BLOCK.CONCRETE_GRAY;
-
+      
       // Walls of spawn room with an opening
       if (distSq > 64 && distSq < 100) {
         if (z < -3 && Math.abs(x) < 3) return BLOCK.AIR; // Opening looking North
@@ -96,7 +88,7 @@ export class DungeonDelverMode implements GameModeInfo {
 
     // Dungeon carving logic
     let isCarved = false;
-
+    
     // 1. Cellular/Noise-based rooms
     const roomNoise = noise2D(x * 0.05, z * 0.05);
     if (roomNoise > 0.4) {
@@ -109,7 +101,7 @@ export class DungeonDelverMode implements GameModeInfo {
     if (tunnelNoise1 < 0.06 || tunnelNoise2 < 0.06) {
       isCarved = true;
     }
-
+    
     // 3. 3D noise for vertical cave variations occasionally
     const caveNoise = noise3D(x * 0.04, y * 0.04, z * 0.04);
     if (caveNoise > 0.3) {
@@ -121,7 +113,7 @@ export class DungeonDelverMode implements GameModeInfo {
       if (y >= 0 && y <= 4) {
         return BLOCK.AIR;
       }
-
+      
       // Floor details
       if (y === -1) {
         // Lava pools natively occurring at y=-1 occasionally
@@ -142,6 +134,7 @@ export class DungeonDelverMode implements GameModeInfo {
         return BLOCK.OBSIDIAN;
       }
       if (y > 5) return BLOCK.STONE;
+
     }
 
     // Solid walls
@@ -155,10 +148,10 @@ export class DungeonDelverMode implements GameModeInfo {
     if (attackerId && ctx.players[attackerId]) {
       const attacker = ctx.players[attackerId];
       attacker.kills = (attacker.kills || 0) + 1;
-      ctx.ioNamespace.emit("playerStatsUpdate", {
-        id: attackerId,
-        kills: attacker.kills,
-        deaths: attacker.deaths,
+      ctx.ioNamespace.emit("playerStatsUpdate", { 
+        id: attackerId, 
+        kills: attacker.kills, 
+        deaths: attacker.deaths 
       });
       ctx.pendingPlayerUpdates.add(attackerId);
     }
@@ -179,12 +172,7 @@ export class DungeonDelverMode implements GameModeInfo {
         const id1 = this.getBlockAt(rx, 1, rz, chunkManager, bakedBlocks);
         const idFloor = this.getBlockAt(rx, -1, rz, chunkManager, bakedBlocks);
 
-        if (
-          id0 === BLOCK.AIR &&
-          id1 === BLOCK.AIR &&
-          idFloor !== BLOCK.AIR &&
-          idFloor !== BLOCK.LAVA
-        ) {
+        if (id0 === BLOCK.AIR && id1 === BLOCK.AIR && idFloor !== BLOCK.AIR && idFloor !== BLOCK.LAVA) {
           return { x: rx + 0.5, y: 1, z: rz + 0.5 };
         }
       }

@@ -1,30 +1,20 @@
-import { GameModeInfo } from "./GameMode";
-import { BLOCK, CHUNK_SIZE, WORLD_Y_OFFSET } from "../constants";
-import { ChunkManager } from "../ChunkManager";
-import {
-  getTerrainHeight,
-  getTerrainMinHeight,
-  noise2D,
-  noise3D,
-} from "../../game/TerrainGenerator";
-import { getVillageBlock } from "../../game/generation/SkyBridgeGenerator";
+import { GameModeInfo } from './GameMode';
+import { BLOCK, CHUNK_SIZE, WORLD_Y_OFFSET } from '../constants';
+import { ChunkManager } from '../ChunkManager';
+import { getTerrainHeight, getTerrainMinHeight, noise2D, noise3D } from '../../game/TerrainGenerator';
+import { getVillageBlock } from '../../game/generation/SkyBridgeGenerator';
 
 export class SkyBridgeMode implements GameModeInfo {
-  name = "/skybridge";
+  name = '/skybridge';
   allowPvP = true;
   allowMobSpawns = true;
   allowPlayerMobSpawns = true;
 
-  isIndestructible(
-    x: number,
-    y: number,
-    z: number,
-    bakedBlocks: Map<string, number>,
-  ): boolean {
+  isIndestructible(x: number, y: number, z: number, bakedBlocks: Map<string, number>): boolean {
     const key = `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
     // if (bakedBlocks.has(key) && bakedBlocks.get(key) !== 0) return true;
     if (y === -60) return true; // Bedrock
-
+    
     // Village boundaries (protected area)
     const isBlueVillageZ = z >= 61 && z <= 110;
     const isRedVillageZ = z <= -61 && z >= -110;
@@ -37,38 +27,25 @@ export class SkyBridgeMode implements GameModeInfo {
 
   private procCache = new Map<number, number>();
 
-  getBlockAt(
-    x: number,
-    y: number,
-    z: number,
-    chunkManager: ChunkManager,
-    bakedBlocks: Map<string, number>,
-  ): number {
+  getBlockAt(x: number, y: number, z: number, chunkManager: ChunkManager, bakedBlocks: Map<string, number>): number {
     const cx = Math.floor(x / CHUNK_SIZE);
     const cz = Math.floor(z / CHUNK_SIZE);
     const lx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
     const lz = ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-    const chunkType = chunkManager.getBlockFromChunk(
-      cx,
-      cz,
-      lx,
-      Math.floor(y) - WORLD_Y_OFFSET,
-      lz,
-    );
+    const chunkType = chunkManager.getBlockFromChunk(cx, cz, lx, Math.floor(y) - WORLD_Y_OFFSET, lz);
     // Explicit player modifications have precedent
     if (chunkType !== undefined) return chunkType;
 
     const fx = Math.floor(x);
     const fy = Math.floor(y);
     const fz = Math.floor(z);
-
+    
     // Check baked blocks next
     const bakedKey = `${fx},${fy},${fz}`;
     // if (bakedBlocks.has(bakedKey)) return bakedBlocks.get(bakedKey)!;
 
-    const hash =
-      (fx & 0x3fff) | (((fy + 60) & 0xff) << 14) | ((fz & 0x3fff) << 22);
-
+    const hash = (fx & 0x3FFF) | ((fy + 60) & 0xFF) << 14 | ((fz & 0x3FFF) << 22);
+    
     const cached = this.procCache.get(hash);
     if (cached !== undefined) return cached;
 
@@ -80,18 +57,12 @@ export class SkyBridgeMode implements GameModeInfo {
     return result;
   }
 
-  private computeProceduralBlock(
-    x: number,
-    y: number,
-    z: number,
-    bakedBlocks: Map<string, number>,
-  ): number {
+  private computeProceduralBlock(x: number, y: number, z: number, bakedBlocks: Map<string, number>): number {
     // Village structures computation (client-side uses this to render buildings)
     const isVillageX = x >= -50 && x <= 50;
     const isBlueVillage = z >= 61 && z <= 110;
-
-    if (isVillageX && isBlueVillage && y >= 5) {
-      // Village blocks are added from wy=5 and up
+    
+    if (isVillageX && isBlueVillage && y >= 5) { // Village blocks are added from wy=5 and up
       const villageBlock = getVillageBlock(x, y, z, isBlueVillage, false);
       if (villageBlock !== BLOCK.AIR) return villageBlock;
     }
@@ -103,8 +74,8 @@ export class SkyBridgeMode implements GameModeInfo {
     if (isVoid) return BLOCK.AIR;
 
     const groundY = getTerrainHeight(x, z, false);
-    if (y >= groundY && y < groundY + 1) return 1;
-
+    if (y >= groundY && y < groundY + 1) return 1; 
+    
     if (y < groundY) {
       const dxBlue = Math.max(0, Math.abs(x) - 50);
       const dzBlue = Math.max(0, 0 - z, z - 110);
@@ -115,35 +86,26 @@ export class SkyBridgeMode implements GameModeInfo {
       const distRed = Math.sqrt(dxRed * dxRed + dzRed * dzRed);
 
       const isAreaProtected = distBlue === 0 || distRed === 0;
-
-      const isVillageOrCastle =
-        x >= -50 &&
-        x <= 50 &&
-        ((z >= 61 && z <= 410) || (z <= -61 && z >= -410));
+      
+      const isVillageOrCastle = (x >= -50 && x <= 50) && ((z >= 61 && z <= 410) || (z <= -61 && z >= -410));
       const isProtected = isVillageOrCastle || isAreaProtected;
 
       const elevationNoise = noise2D(x * 0.001, z * 0.001);
       const isOcean = elevationNoise < -0.5;
 
-      const hasCaves =
-        !isProtected && !isOcean && noise2D(x * 0.01, z * 0.01) > 0.3;
-
+      const hasCaves = !isProtected && !isOcean && noise2D(x * 0.01, z * 0.01) > 0.3;
+      
       const cy = y + 60;
       const cTerrainHeight = groundY + 60;
-
+      
       if (hasCaves && cy > 1 && cy < cTerrainHeight - 4) {
         let isCave = false;
-        const tunnelRadius =
-          0.08 + noise3D(x * 0.005, cy * 0.005, z * 0.005) * 0.05;
-        if (
-          Math.abs(noise3D(x * 0.015, cy * 0.015, z * 0.015)) < tunnelRadius &&
-          Math.abs(
-            noise3D(x * 0.015 + 1000, cy * 0.015 + 1000, z * 0.015 + 1000),
-          ) < tunnelRadius
-        ) {
+        const tunnelRadius = 0.08 + noise3D(x * 0.005, cy * 0.005, z * 0.005) * 0.05;
+        if (Math.abs(noise3D(x * 0.015, cy * 0.015, z * 0.015)) < tunnelRadius && 
+            Math.abs(noise3D(x * 0.015 + 1000, cy * 0.015 + 1000, z * 0.015 + 1000)) < tunnelRadius) {
           isCave = true;
         }
-
+        
         if (noise3D(x * 0.008, cy * 0.01, z * 0.008) > 0.3) {
           isCave = true;
         }
@@ -155,30 +117,23 @@ export class SkyBridgeMode implements GameModeInfo {
       }
       return 1;
     }
-
+    
     return BLOCK.AIR;
   }
 
-  getRespawnPosition(
-    playerId: string,
-    playerState?: any,
-    chunkManager?: ChunkManager,
-    bakedBlocks?: Map<string, number>,
-  ): { x: number; y: number; z: number; yaw?: number } {
+
+  getRespawnPosition(playerId: string, playerState?: any, chunkManager?: ChunkManager, bakedBlocks?: Map<string, number>): {x: number, y: number, z: number, yaw?: number} {
     const rx = (Math.random() - 0.5) * 16;
     const rz = (Math.random() - 0.5) * 16;
     let sideZ = 1;
     if (playerState && playerState.team) {
-      sideZ = playerState.team === "red" ? -1 : 1;
+      sideZ = playerState.team === 'red' ? -1 : 1;
     } else {
-      sideZ =
-        playerState && playerState.position && playerState.position.z >= 0
-          ? 1
-          : -1;
+      sideZ = (playerState && playerState.position && playerState.position.z >= 0) ? 1 : -1;
     }
     const targetZ = sideZ * 80 + rz;
     const groundY = getTerrainHeight(rx, targetZ, false);
-
+    
     let spawnY = groundY + 3;
 
     if (chunkManager && bakedBlocks) {
@@ -194,4 +149,5 @@ export class SkyBridgeMode implements GameModeInfo {
 
     return { x: rx, y: spawnY, z: targetZ };
   }
+
 }

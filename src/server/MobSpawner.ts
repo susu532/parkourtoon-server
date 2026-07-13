@@ -4,8 +4,7 @@ import { isNature } from "../game/TerrainGenerator";
 import { MobTypes } from "../game/Constants";
 
 export function spawnMobsTick(ctx: GameContext, loopFn: () => void) {
-  const { state, mode, players, mobs, getBlockAt, isSkyCastlesMode, spawnMob } =
-    ctx;
+  const { state, mode, players, mobs, getBlockAt, isSkyCastlesMode, spawnMob } = ctx;
 
   if (state.isDestroyed) return;
   const isDay = Math.sin(state.dayTime * Math.PI * 2) > 0;
@@ -13,7 +12,7 @@ export function spawnMobsTick(ctx: GameContext, loopFn: () => void) {
   state.spawnTimeout = setTimeout(loopFn, state.spawnInterval);
 
   if (!mode.allowMobSpawns) return;
-  const playerIds = Object.keys(players).filter((id) => !players[id].isBot);
+  const playerIds = Object.keys(players).filter(id => !players[id].isBot);
   if (playerIds.length === 0) return;
 
   const maxMobs = Math.min(400, playerIds.length * 6);
@@ -36,8 +35,7 @@ export function spawnMobsTick(ctx: GameContext, loopFn: () => void) {
 
     for (let batch = 0; batch < batchSize; batch++) {
       if (Object.keys(mobs).length >= maxMobs) break;
-      const randomPlayerId =
-        playerIds[Math.floor(Math.random() * playerIds.length)];
+      const randomPlayerId = playerIds[Math.floor(Math.random() * playerIds.length)];
       const randomPlayer = players[randomPlayerId];
       const angle = Math.random() * Math.PI * 2;
       const dist = 20 + Math.random() * 40;
@@ -52,7 +50,7 @@ export function spawnMobsTick(ctx: GameContext, loopFn: () => void) {
         let validSpawnYLevels: number[] = [];
         let startY = 150; // Search from near the top, covering Skycastles peaks
         let endY = -50; // Search down to near the bottom
-        if (mode.name.startsWith("/dungeondelver")) {
+        if (mode.name.startsWith('/dungeondelver')) {
           startY = 5;
           endY = 0;
         }
@@ -72,11 +70,8 @@ export function spawnMobsTick(ctx: GameContext, loopFn: () => void) {
             blockBelow !== BLOCK.SPRUCE_LEAVES &&
             blockBelow !== BLOCK.DARK_OAK_LEAVES &&
             blockBelow !== BLOCK.CHERRY_LEAVES;
-          const validSpace =
-            !isSolidBlock(blockAt) &&
-            blockAt !== BLOCK.LAVA &&
-            !isSolidBlock(blockAbove) &&
-            blockAbove !== BLOCK.LAVA;
+          const validSpace = !isSolidBlock(blockAt) && blockAt !== BLOCK.LAVA && 
+                             !isSolidBlock(blockAbove) && blockAbove !== BLOCK.LAVA;
 
           if (validGround && validSpace) {
             // Valid ground found.
@@ -89,10 +84,7 @@ export function spawnMobsTick(ctx: GameContext, loopFn: () => void) {
         }
 
         if (validSpawnYLevels.length > 0) {
-          spawnY =
-            validSpawnYLevels[
-              Math.floor(Math.random() * validSpawnYLevels.length)
-            ];
+          spawnY = validSpawnYLevels[Math.floor(Math.random() * validSpawnYLevels.length)];
         }
 
         if (spawnY !== -1) {
@@ -118,27 +110,12 @@ export function spawnMobsTick(ctx: GameContext, loopFn: () => void) {
             else type = MobTypes.SLIME;
           }
 
-          if (
-            mode.name.startsWith("/dungeondelver") &&
-            (type === MobTypes.COW || type === MobTypes.SHEEP)
-          ) {
-            const enemies = [
-              MobTypes.ZOMBIE,
-              MobTypes.SKELETON,
-              MobTypes.CREEPER,
-              MobTypes.SLIME,
-            ];
-            type = enemies[Math.floor(Math.random() * enemies.length)];
+          if (mode.name.startsWith('/dungeondelver') && (type === MobTypes.COW || type === MobTypes.SHEEP)) {
+             const enemies = [MobTypes.ZOMBIE, MobTypes.SKELETON, MobTypes.CREEPER, MobTypes.SLIME];
+             type = enemies[Math.floor(Math.random() * enemies.length)];
           }
 
-          if (
-            [
-              MobTypes.ZOMBIE,
-              MobTypes.CREEPER,
-              MobTypes.SKELETON,
-              MobTypes.SLIME,
-            ].includes(type as MobTypes)
-          ) {
+          if ([MobTypes.ZOMBIE, MobTypes.CREEPER, MobTypes.SKELETON, MobTypes.SLIME].includes(type as MobTypes)) {
             level = 1;
 
             // Server-side spawn lighting check
@@ -177,11 +154,7 @@ export function spawnMobsTick(ctx: GameContext, loopFn: () => void) {
             if (!nearLightSource) {
               for (let y = py + 1; y < 150; y++) {
                 const block = fastSpawnGetBlock(px, y, pz);
-                if (
-                  block !== BLOCK.AIR &&
-                  block !== BLOCK.WATER &&
-                  block !== BLOCK.GLASS
-                ) {
+                if (block !== BLOCK.AIR && block !== BLOCK.WATER && block !== BLOCK.GLASS) {
                   isExposed = false;
                   break;
                 }
@@ -196,22 +169,10 @@ export function spawnMobsTick(ctx: GameContext, loopFn: () => void) {
                   break;
                 }
               }
-              spawnMob(
-                type,
-                Math.floor(x) + 0.5,
-                spawnY,
-                Math.floor(z) + 0.5,
-                level,
-              );
+              spawnMob(type, Math.floor(x) + 0.5, spawnY, Math.floor(z) + 0.5, level);
             }
           } else {
-            spawnMob(
-              type,
-              Math.floor(x) + 0.5,
-              spawnY,
-              Math.floor(z) + 0.5,
-              level,
-            );
+            spawnMob(type, Math.floor(x) + 0.5, spawnY, Math.floor(z) + 0.5, level);
           }
         }
       }

@@ -1,28 +1,29 @@
-import { audioManager } from "./AudioManager";
-import { useGameStore } from "../store/gameStore";
+
+import { audioManager } from './AudioManager';
+import { useGameStore } from '../store/gameStore';
 
 export enum Rarity {
-  COMMON = "COMMON",
-  UNCOMMON = "UNCOMMON",
-  RARE = "RARE",
-  EPIC = "EPIC",
-  LEGENDARY = "LEGENDARY",
-  MYTHIC = "MYTHIC",
-  DIVINE = "DIVINE",
-  SPECIAL = "SPECIAL",
-  VERY_SPECIAL = "VERY_SPECIAL",
+  COMMON = 'COMMON',
+  UNCOMMON = 'UNCOMMON',
+  RARE = 'RARE',
+  EPIC = 'EPIC',
+  LEGENDARY = 'LEGENDARY',
+  MYTHIC = 'MYTHIC',
+  DIVINE = 'DIVINE',
+  SPECIAL = 'SPECIAL',
+  VERY_SPECIAL = 'VERY_SPECIAL',
 }
 
 export const RARITY_COLORS: Record<Rarity, string> = {
-  [Rarity.COMMON]: "#FFFFFF",
-  [Rarity.UNCOMMON]: "#55FF55",
-  [Rarity.RARE]: "#5555FF",
-  [Rarity.EPIC]: "#AA00AA",
-  [Rarity.LEGENDARY]: "#FFAA00",
-  [Rarity.MYTHIC]: "#FF55FF",
-  [Rarity.DIVINE]: "#55FFFF",
-  [Rarity.SPECIAL]: "#FF5555",
-  [Rarity.VERY_SPECIAL]: "#FF5555",
+  [Rarity.COMMON]: '#FFFFFF',
+  [Rarity.UNCOMMON]: '#55FF55',
+  [Rarity.RARE]: '#5555FF',
+  [Rarity.EPIC]: '#AA00AA',
+  [Rarity.LEGENDARY]: '#FFAA00',
+  [Rarity.MYTHIC]: '#FF55FF',
+  [Rarity.DIVINE]: '#55FFFF',
+  [Rarity.SPECIAL]: '#FF5555',
+  [Rarity.VERY_SPECIAL]: '#FF5555',
 };
 
 export interface PlayerStats {
@@ -47,13 +48,13 @@ export interface SkillProgress {
 }
 
 export enum SkillType {
-  COMBAT = "Combat",
-  MINING = "Mining",
-  FORAGING = "Foraging",
-  FARMING = "Farming",
-  FISHING = "Fishing",
-  ENCHANTING = "Enchanting",
-  ALCHEMY = "Alchemy",
+  COMBAT = 'Combat',
+  MINING = 'Mining',
+  FORAGING = 'Foraging',
+  FARMING = 'Farming',
+  FISHING = 'Fishing',
+  ENCHANTING = 'Enchanting',
+  ALCHEMY = 'Alchemy',
 }
 
 export interface ItemMetadata {
@@ -104,11 +105,7 @@ class SkyBridgeManager {
 
   effectiveStats: PlayerStats = { ...this.stats };
 
-  setSkills(
-    skills:
-      | Record<SkillType, SkillProgress>
-      | Partial<Record<SkillType, SkillProgress>>,
-  ) {
+  setSkills(skills: Record<SkillType, SkillProgress> | Partial<Record<SkillType, SkillProgress>>) {
     // Merge with defaults to ensure all SkillType keys exist
     for (const key of Object.values(SkillType)) {
       if (skills[key]) {
@@ -135,7 +132,7 @@ class SkyBridgeManager {
   addXp(skill: SkillType, amount: number) {
     const progress = this.skills[skill];
     progress.xp += amount;
-
+    
     // Dispatch event for UI popup
     useGameStore.getState().addXpPopup(skill, amount);
 
@@ -154,8 +151,8 @@ class SkyBridgeManager {
 
   private onLevelUp(skill: SkillType, level: number) {
     console.log(`Leveled up ${skill} to ${level}!`);
-    audioManager.play("level_up", 0.8, 1.0);
-
+    audioManager.play('level_up', 0.8, 1.0);
+    
     // Dispatch event for UI celebration
     useGameStore.getState().addLevelUpPopup(skill, level);
 
@@ -184,7 +181,7 @@ class SkyBridgeManager {
 
   getEffectiveStats(inventory: any, hotbarIndex: number): PlayerStats {
     const effectiveStats = { ...this.stats };
-
+    
     // Add stats from held item
     const heldItem = inventory.slots[hotbarIndex];
     if (heldItem?.metadata?.stats) {
@@ -239,37 +236,21 @@ class SkyBridgeManager {
   tick(delta: number, inventory: any, hotbarIndex: number) {
     this.effectiveStats = this.getEffectiveStats(inventory, hotbarIndex);
     const effectiveStats = this.effectiveStats;
-
+    
     const now = performance.now();
 
     // Mana Regeneration (2% of max per second + base 2)
     const manaRegen = (effectiveStats.maxIntelligence * 0.02 + 2) * delta;
-    this.stats.intelligence = Math.min(
-      effectiveStats.maxIntelligence,
-      this.stats.intelligence + manaRegen,
-    );
+    this.stats.intelligence = Math.min(effectiveStats.maxIntelligence, this.stats.intelligence + manaRegen);
 
     // Health Regeneration: Process starts 20s after last damage
-    if (
-      this.stats.health < effectiveStats.maxHealth &&
-      now - this.lastDamageTime >= 20000
-    ) {
+    if (this.stats.health < effectiveStats.maxHealth && (now - this.lastDamageTime >= 20000)) {
       const healthRegen = (effectiveStats.maxHealth * 0.01 + 1) * delta;
-      this.stats.health = Math.min(
-        effectiveStats.maxHealth,
-        this.stats.health + healthRegen,
-      );
+      this.stats.health = Math.min(effectiveStats.maxHealth, this.stats.health + healthRegen);
     }
 
-    if (now - this.lastStatsPushTime > 200) {
-      // 5Hz UI update rate
-      useGameStore
-        .getState()
-        .setPlayerStats({
-          ...this.effectiveStats,
-          health: this.stats.health,
-          intelligence: this.stats.intelligence,
-        });
+    if (now - this.lastStatsPushTime > 200) { // 5Hz UI update rate
+      useGameStore.getState().setPlayerStats({ ...this.effectiveStats, health: this.stats.health, intelligence: this.stats.intelligence });
       this.lastStatsPushTime = now;
     }
   }

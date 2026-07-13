@@ -1,18 +1,14 @@
-import { getBattleRoyaleBlock } from "../game/generation/BattleRoyaleGenerator";
-import { generateHubTerrain } from "../game/generation/HubGenerator";
-import { CHUNK_SIZE, CHUNK_HEIGHT, WORLD_Y_OFFSET } from "./constants";
+import { getBattleRoyaleBlock } from '../game/generation/BattleRoyaleGenerator';
+import { generateHubTerrain } from '../game/generation/HubGenerator';
+import { CHUNK_SIZE, CHUNK_HEIGHT, WORLD_Y_OFFSET } from './constants';
 
-export default async function generateChunk(msg: {
-  cx: number;
-  cz: number;
-  worldName: string;
-  modeName: string;
-}) {
-  const { cx, cz, worldName, modeName } = msg;
+export default async function generateChunk(msg: { cx: number; cz: number; worldName: string; modeName: string; epoch?: number }) {
+  const { cx, cz, worldName, modeName, epoch } = msg;
+
   const chunkData = new Uint16Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
   chunkData.fill(65535);
 
-  if (modeName === "/battleroyale") {
+  if (modeName === '/battleroyale') {
     for (let ly = 0; ly < CHUNK_HEIGHT; ly++) {
       for (let lz = 0; lz < CHUNK_SIZE; lz++) {
         for (let lx = 0; lx < CHUNK_SIZE; lx++) {
@@ -26,15 +22,15 @@ export default async function generateChunk(msg: {
         }
       }
     }
-  } else if (modeName === "/hub") {
+  } else if (modeName === '/hub') {
     const mockChunk = {
       setBlockFast: (x: number, y: number, z: number, type: number) => {
         if (y >= 0 && y < CHUNK_HEIGHT) {
           chunkData[x | (z << 4) | (y << 8)] = type;
         }
-      },
+      }
     };
-
+      
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
       for (let lx = 0; lx < CHUNK_SIZE; lx++) {
         const wx = cx * CHUNK_SIZE + lx;
@@ -45,9 +41,6 @@ export default async function generateChunk(msg: {
   }
 
   return {
-    cx,
-    cz,
-    worldName,
-    data: chunkData.buffer,
+    cx, cz, worldName, epoch, data: chunkData.buffer
   };
 }

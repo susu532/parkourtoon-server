@@ -1,43 +1,45 @@
-import Database from "better-sqlite3";
-import { createGameServer } from "./GameServer.ts";
-import { HubMode } from "./modes/HubMode.ts";
-import { SkyBridgeMode } from "./modes/SkyBridgeMode.ts";
-import { SkyCastlesMode } from "./modes/SkyCastlesMode.ts";
-import { SummerLabMode } from "./modes/SummerLabMode.ts";
-import { DungeonDelverMode } from "./modes/DungeonDelverMode.ts";
-import { BattleRoyaleMode } from "./modes/BattleRoyaleMode.ts";
-import { SkyIslandMode } from "./modes/SkyIslandMode.ts";
-import { encodePacket, decodePacket } from "./WSHelpers.ts";
-import { parentPort, workerData, Worker } from "worker_threads";
-import { WebSocketServer } from "ws";
-import path from "path";
+import Database from 'better-sqlite3';
+import { createGameServer } from './GameServer.ts';
+import { HubMode } from './modes/HubMode.ts';
+import { SkyBridgeMode } from './modes/SkyBridgeMode.ts';
+import { SkyCastlesMode } from './modes/SkyCastlesMode.ts';
+import { SummerLabMode } from './modes/SummerLabMode.ts';
+import { DungeonDelverMode } from './modes/DungeonDelverMode.ts';
+import { BattleRoyaleMode } from './modes/BattleRoyaleMode.ts';
+import { SkyIslandMode } from './modes/SkyIslandMode.ts';
+import { HappyIslandMode } from './modes/HappyIslandMode.ts';
+import { encodePacket, decodePacket } from './WSHelpers.ts';
+import { parentPort, workerData, Worker } from 'worker_threads';
+import { WebSocketServer } from 'ws';
+import path from 'path';
 
-import fs from "fs";
+import fs from 'fs';
 
 // Extract data passed from main thread via workerData
-const baseName = workerData?.BASE_NAME || "summerlab";
-const instanceId = workerData?.INSTANCE_ID || "/summerlab_1";
+const baseName = workerData?.BASE_NAME || 'summerlab';
+const instanceId = workerData?.INSTANCE_ID || '/summerlab_1';
 
 // We will proxy generation requests up to the main thread's Piscina pool
 const genWorker = parentPort!;
 
-parentPort?.on("message", (msg) => {
-  if (msg.type === "chunk_generated") {
-    if ((api as any) && (api as any).injectChunk) {
-      (api as any).injectChunk(msg.cx, msg.cz, msg.data);
-    }
+parentPort?.on('message', (msg) => {
+  if (msg.type === 'chunk_generated') {
+      if ((api as any) && (api as any).injectChunk) {
+          (api as any).injectChunk(msg.cx, msg.cz, msg.data, msg.epoch);
+      }
   }
 });
 
 function getModeFactory(name: string) {
-  if (name === "hub") return new HubMode();
+  if (name === 'hub') return new HubMode();
   // if (name === 'skybridge') return new SkyBridgeMode();
   // if (name === 'skycastles') return new SkyCastlesMode('/skycastles');
-  if (name === "summerlab") return new SummerLabMode("/summerlab");
+  if (name === 'summerlab') return new SummerLabMode('/summerlab');
+  if (name === 'happyisland') return new HappyIslandMode('/happyisland');
   // if (name === 'dungeondelver') return new DungeonDelverMode();
   // if (name === 'battleroyale') return new BattleRoyaleMode();
   // if (name === 'skyisland') return new SkyIslandMode('/skyisland');
-  return new SummerLabMode("/summerlab");
+  return new SummerLabMode('/summerlab');
 }
 
 const mode = getModeFactory(baseName);
@@ -45,11 +47,11 @@ mode.name = instanceId; // set namespace prefix properly
 
 let db: Database.Database;
 try {
-  const sanitized = instanceId.replace(/[^a-zA-Z0-9_-]/g, "");
+  const sanitized = instanceId.replace(/[^a-zA-Z0-9_-]/g, '');
   db = new Database(`db_${sanitized}.db`);
-  db.pragma("journal_mode = WAL");
-  db.pragma("synchronous = NORMAL");
-
+  db.pragma('journal_mode = WAL');
+  db.pragma('synchronous = NORMAL');
+  
   db.exec(`
     CREATE TABLE IF NOT EXISTS chunk_data (
       world TEXT,
@@ -73,15 +75,15 @@ class FakeIoNamespace {
   public sockets: Map<string, FakeSocket> = new Map();
   public rooms: Map<string, Set<FakeSocket>> = new Map();
   public handlers: Record<string, Function> = {};
-
+  
   on(event: string, handler: Function) {
     this.handlers[event] = handler;
   }
-
+  
   emit(event: string, ...args: any[]) {
     const packet = encodePacket(event, args);
     for (const socket of this.sockets.values()) {
-      socket.ws.send(packet);
+       socket.ws.send(packet);
     }
   }
 
@@ -90,22 +92,22 @@ class FakeIoNamespace {
     const res = {
       emit: (event: string, ...args: any[]) => {
         if (rm) {
-          const packet = encodePacket(event, args);
-          for (const socket of rm) {
-            socket.ws.send(packet);
-          }
+           const packet = encodePacket(event, args);
+           for (const socket of rm) {
+              socket.ws.send(packet);
+           }
         }
       },
       except: (excludeId: string) => ({
         emit: (event: string, ...args: any[]) => {
           if (rm) {
-            const packet = encodePacket(event, args);
-            for (const socket of rm) {
-              if (socket.id !== excludeId) socket.ws.send(packet);
-            }
+             const packet = encodePacket(event, args);
+             for (const socket of rm) {
+                if (socket.id !== excludeId) socket.ws.send(packet);
+             }
           }
-        },
-      }),
+        }
+      })
     };
     (res as any).volatile = res;
     return res;
@@ -113,7 +115,7 @@ class FakeIoNamespace {
 
   disconnectSockets(closeUnclosed: boolean) {
     for (const socket of this.sockets.values()) {
-      socket.ws.terminate();
+        socket.ws.terminate();
     }
     this.sockets.clear();
   }
@@ -130,12 +132,8 @@ class FakeSocket {
   public broadcast: any;
   public rooms = new Set<string>();
   public volatile: any;
-
-  constructor(
-    id: string,
-    ws: any,
-    private nsp: FakeIoNamespace,
-  ) {
+  
+  constructor(id: string, ws: any, private nsp: FakeIoNamespace) {
     this.id = id;
     this.ws = ws;
     this.volatile = this;
@@ -144,53 +142,53 @@ class FakeSocket {
       emit: (event: string, ...args: any[]) => {
         const packet = encodePacket(event, args);
         for (const s of this.nsp.sockets.values()) {
-          if (s.id !== id) s.ws.send(packet);
+           if (s.id !== id) s.ws.send(packet);
         }
-      },
+      }
     };
     (this.broadcast as any).volatile = this.broadcast;
 
-    ws.on("message", (data: any, isBinary: boolean) => {
-      // decode packet
-      const parsed = decodePacket(data);
-      if (parsed && this.handlers[parsed.event]) {
-        this.handlers[parsed.event](...parsed.args);
-      }
+    ws.on('message', (data: any, isBinary: boolean) => {
+       // decode packet
+       const parsed = decodePacket(data);
+       if (parsed && this.handlers[parsed.event]) {
+           this.handlers[parsed.event](...parsed.args);
+       }
     });
 
-    ws.on("close", () => {
-      for (const room of this.rooms) {
-        const rm = this.nsp.rooms.get(room);
-        if (rm) {
-          rm.delete(this);
-          if (rm.size === 0) {
-            this.nsp.rooms.delete(room);
+    ws.on('close', () => {
+       for (const room of this.rooms) {
+          const rm = this.nsp.rooms.get(room);
+          if (rm) {
+             rm.delete(this);
+             if (rm.size === 0) {
+                 this.nsp.rooms.delete(room);
+             }
           }
-        }
-      }
-      this.nsp.sockets.delete(id);
-      if (this.handlers["disconnect"]) this.handlers["disconnect"]();
+       }
+       this.nsp.sockets.delete(id);
+       if (this.handlers['disconnect']) this.handlers['disconnect']();
     });
   }
-
+  
   on(event: string, handler: Function) {
     this.handlers[event] = handler;
   }
-
+  
   emit(event: string, ...args: any[]) {
     this.ws.send(encodePacket(event, args));
   }
-
+  
   join(room: string) {
     this.rooms.add(room);
     let rm = this.nsp.rooms.get(room);
     if (!rm) {
-      rm = new Set();
-      this.nsp.rooms.set(room, rm);
+       rm = new Set();
+       this.nsp.rooms.set(room, rm);
     }
     rm.add(this);
   }
-
+  
   leave(room: string) {
     this.rooms.delete(room);
     const rm = this.nsp.rooms.get(room);
@@ -201,7 +199,7 @@ class FakeSocket {
       }
     }
   }
-
+  
   disconnect(close: boolean) {
     this.ws.terminate();
   }
@@ -210,7 +208,7 @@ class FakeSocket {
 const fakeIo = new FakeIoNamespace();
 
 const fakeServer = {
-  of: (name: string) => fakeIo,
+  of: (name: string) => fakeIo
 };
 
 const api = createGameServer(fakeServer as any, db, mode, genWorker as any);
@@ -220,59 +218,56 @@ const wss = new WebSocketServer({ noServer: true });
 if (parentPort) {
   // Periodically send the player count to the main thread
   setInterval(() => {
-    parentPort!.postMessage({
-      type: "playerCount",
-      count: fakeIo.sockets.size,
-    });
+    parentPort!.postMessage({ type: 'playerCount', count: fakeIo.sockets.size });
   }, 5000);
 
-  parentPort.on("message", (msg: any) => {
-    if (msg && msg.type === "new_client") {
-      const port = msg.port;
-      const id = Math.random().toString(36).substring(2, 10);
-
-      const fakeWs = {
-        handlers: {} as Record<string, Function>,
-        on: function (event: string, handler: Function) {
-          this.handlers[event] = handler;
-        },
-        send: function (data: any) {
-          port.postMessage({ type: "message", data });
-        },
-        terminate: function () {
-          port.postMessage({ type: "close" });
-          port.close();
-        },
-      };
-
-      port.on("message", (m: any) => {
-        if (m.type === "message") {
-          if (fakeWs.handlers["message"]) {
-            fakeWs.handlers["message"](m.data, m.isBinary);
+  parentPort.on('message', (msg: any) => {
+    if (msg && msg.type === 'new_client') {
+       const port = msg.port;
+       const id = Math.random().toString(36).substring(2, 10);
+       
+       const fakeWs = {
+          handlers: {} as Record<string, Function>,
+          on: function(event: string, handler: Function) {
+              this.handlers[event] = handler;
+          },
+          send: function(data: any) {
+              port.postMessage({ type: 'message', data });
+          },
+          terminate: function() {
+              port.postMessage({ type: 'close' });
+              port.close();
           }
-        } else if (m.type === "close") {
-          if (fakeWs.handlers["close"]) {
-            fakeWs.handlers["close"]();
-          }
-          port.close();
-        }
-      });
+       };
 
-      port.on("close", () => {
-        if (fakeWs.handlers["close"]) {
-          fakeWs.handlers["close"]();
-        }
-      });
+       port.on('message', (m: any) => {
+         if (m.type === 'message') {
+             if (fakeWs.handlers['message']) {
+                 fakeWs.handlers['message'](m.data, m.isBinary);
+             }
+         } else if (m.type === 'close') {
+             if (fakeWs.handlers['close']) {
+                 fakeWs.handlers['close']();
+             }
+             port.close();
+         }
+       });
+       
+       port.on('close', () => {
+           if (fakeWs.handlers['close']) {
+               fakeWs.handlers['close']();
+           }
+       });
 
-      const fakeSocket = new FakeSocket(id, fakeWs, fakeIo);
-
-      fakeIo.sockets.set(id, fakeSocket);
-      fakeWs.send(encodePacket("set_id", [id]));
-
-      if (fakeIo.handlers["connection"]) {
-        fakeIo.handlers["connection"](fakeSocket);
-      }
-    } else if (msg && msg.type === "destroy") {
+       const fakeSocket = new FakeSocket(id, fakeWs, fakeIo);
+       
+       fakeIo.sockets.set(id, fakeSocket);
+       fakeWs.send(encodePacket('set_id', [id]));
+       
+       if (fakeIo.handlers['connection']) {
+           fakeIo.handlers['connection'](fakeSocket);
+       }
+    } else if (msg && msg.type === 'destroy') {
       if (api && (api as any).destroy) (api as any).destroy();
       if ((genWorker as any).terminate) (genWorker as any).terminate();
       db.close();
@@ -280,3 +275,5 @@ if (parentPort) {
     }
   });
 }
+
+

@@ -13,7 +13,7 @@ import {
   noise3D,
 } from "../game/TerrainGenerator";
 
-import { BLOCK, isSolidBlock, CHUNK_SIZE, WORLD_Y_OFFSET } from "./constants";
+import { BLOCK, isSolidBlock, CHUNK_SIZE, WORLD_Y_OFFSET, isWaterBlock } from "./constants";
 import { MobTypes, calculateMobMaxHealth } from "../game/Constants";
 import { tickItemDespawn, tickMobDespawn } from "./Systems";
 import itemsData from "../../data/items.json";
@@ -26,21 +26,10 @@ const bakedBlocks = new Map<string, number>(Object.entries(bakedBlocksData));
 
 import { spawnMobsTick } from "./MobSpawner";
 
-import {
-  IServerPlayer,
-  ITickMob,
-  IDroppedItemState,
-  IMinionState,
-} from "../types/shared";
-import { getRandomCutePlayerName } from "../game/CuteNames";
+import { IServerPlayer, ITickMob, IDroppedItemState, IMinionState } from "../types/shared";
 import type { Worker } from "worker_threads";
 
-export function createGameServer(
-  io: any,
-  db: any,
-  mode: GameModeInfo,
-  genWorker?: Worker,
-) {
+export function createGameServer(io: any, db: any, mode: GameModeInfo, genWorker?: Worker) {
   const isHubMode = mode.name.startsWith("/hub");
   const namespacePrefix = mode.name;
   const worldName = namespacePrefix.replace("/", "");
@@ -60,6 +49,7 @@ export function createGameServer(
     gameState: "playing",
     winningTeam: null as string | null,
     gameStartTime: Date.now(),
+    lastMapResetTime: 0,
     resetCountdown: null as number | null,
     emptyRoomSince: null as number | null,
     hasSetEndgameMessage: false,
@@ -69,8 +59,9 @@ export function createGameServer(
     tick10sCount: 0,
     spawnInterval: 1000,
     spawnTimeout: null as NodeJS.Timeout | null,
-    isDestroyed: false,
+    isDestroyed: false
   };
+
 
   const chunkManager = new ChunkManager(worldName, db);
   let npcs: any[] = [];
@@ -99,7 +90,7 @@ export function createGameServer(
             if (p.id !== excludeSocketId) {
               const sock = ioNamespace.sockets.get(p.id);
               if (sock) {
-                if (sock.ws && typeof sock.ws.send === "function") {
+                if (sock.ws && typeof sock.ws.send === 'function') {
                   if (!packet) packet = encodePacket(eventName, [data]);
                   sock.ws.send(packet);
                 } else {
@@ -163,9 +154,9 @@ export function createGameServer(
     try {
       if (npcs.length > 0) {
         parentPort?.postMessage({
-          type: "save_npcs",
+          type: 'save_npcs',
           world: worldName,
-          data: JSON.stringify(npcs),
+          data: JSON.stringify(npcs)
         });
       }
     } catch (e) {}
@@ -190,11 +181,7 @@ export function createGameServer(
 
   const mobPool: ITickMob[] = [];
   function getMobFromPool(): ITickMob {
-    return (
-      mobPool.length > 0
-        ? mobPool.pop()
-        : { velocity: { x: 0, y: 0, z: 0 }, position: { x: 0, y: 0, z: 0 } }
-    ) as ITickMob;
+    return (mobPool.length > 0 ? mobPool.pop() : { velocity: {x: 0, y: 0, z: 0}, position: {x: 0, y: 0, z: 0} }) as ITickMob;
   }
   function releaseMobToPool(mob: ITickMob) {
     if (mobPool.length < 500) mobPool.push(mob);
@@ -207,7 +194,7 @@ export function createGameServer(
   const globalSplats = new Map<string, any[]>();
   const pendingSplats: any[] = [];
   const pendingCleanSplats: string[] = [];
-
+  
   const dayCycleSpeed = 0.0008;
 
   // Indestructible blocks (baked builds, bedrock, castles, villages)
@@ -220,32 +207,27 @@ export function createGameServer(
 
     const absX = Math.abs(Math.floor(x));
     const absZ = Math.abs(Math.floor(z));
-
+    
     // Protect the 4 map corners from block placement/destruction
     if (absX >= 29 && absX <= 34 && absZ >= 76 && absZ <= 81) {
+      return true;
+    }
+
+    // Disable building at spawn (5 block radius)
+    if (absX <= 5 && absZ <= 5) {
       return true;
     }
 
     // Do not force load the chunk synchronously. Active regions are already loaded.
     let currentBlock = chunkManager.getBlockFromChunk(cx, cz, lx, ly, lz);
 
-    // If a player placed this block, it must be breakable
-    if (currentBlock !== undefined && currentBlock > 0) {
-      return false;
-    }
-
     // If the chunk is literally empty/ungenerated, we could fall back to the game mode's terrain generator
+    // (We removed the old currentBlock > 0 check so that map-defined static geometry is protected)
     if (currentBlock === undefined) {
       if (genWorker && !chunkManager.chunks.has(`${cx},${cz}`)) {
-        genWorker.postMessage({
-          type: "generate",
-          cx,
-          cz,
-          worldName,
-          modeName: mode.name,
-        });
-        // Mark as generating so we don't spam requests. The 65535 array isn't placed yet.
-        // Wait, the client expects fallback. Let's just return mode.getBlockAt directly to not break falling collisions right now.
+         genWorker.postMessage({ type: 'generate', cx, cz, worldName, modeName: mode.name, epoch: chunkManager.epoch });
+         // Mark as generating so we don't spam requests. The 65535 array isn't placed yet.
+         // Wait, the client expects fallback. Let's just return mode.getBlockAt directly to not break falling collisions right now.
       }
       currentBlock = mode.getBlockAt(x, y, z, chunkManager, bakedBlocks);
     }
@@ -256,28 +238,12 @@ export function createGameServer(
   function getBlockAt(x: number, y: number, z: number) {
     const cx = Math.floor(x / CHUNK_SIZE);
     const cz = Math.floor(z / CHUNK_SIZE);
-    let currentBlock = chunkManager.getBlockFromChunk(
-      cx,
-      cz,
-      ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE,
-      Math.floor(y) - WORLD_Y_OFFSET,
-      ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE,
-    );
-
+    let currentBlock = chunkManager.getBlockFromChunk(cx, cz, ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE, Math.floor(y) - WORLD_Y_OFFSET, ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE);
+    
     if (currentBlock === undefined) {
-      if (
-        genWorker &&
-        !chunkManager.chunks.has(`${cx},${cz}`) &&
-        !chunkManager.dirtyChunks.has(`${cx},${cz}#gen`)
-      ) {
-        chunkManager.dirtyChunks.add(`${cx},${cz}#gen`); // tag to prevent spam
-        genWorker.postMessage({
-          type: "generate",
-          cx,
-          cz,
-          worldName,
-          modeName: mode.name,
-        });
+      if (genWorker && !chunkManager.chunks.has(`${cx},${cz}`) && !chunkManager.dirtyChunks.has(`${cx},${cz}#gen`)) {
+         chunkManager.dirtyChunks.add(`${cx},${cz}#gen`); // tag to prevent spam
+         genWorker.postMessage({ type: 'generate', cx, cz, worldName, modeName: mode.name, epoch: chunkManager.epoch });
       }
     }
     return mode.getBlockAt(x, y, z, chunkManager, bakedBlocks);
@@ -293,7 +259,12 @@ export function createGameServer(
   ) {
     const id = "mob_" + Math.random().toString(36).substring(2, 9);
 
-    const isHostile = ["Zombie", "Creeper", "Skeleton", "Slime"].includes(type);
+    const isHostile = [
+      "Zombie",
+      "Creeper",
+      "Skeleton",
+      "Slime",
+    ].includes(type);
 
     let mobLvl = 1;
     let hp = 100;
@@ -348,151 +319,27 @@ export function createGameServer(
   const playerBuffers = new Map<string, Buffer>();
   const mobBuffers = new Map<string, Buffer>();
   const hostileMobTypes = ["Zombie", "Creeper", "Skeleton", "Slime", "Morvane"];
-  const ctx: import("./GameContext").GameContext = {
-    ioNamespace,
-    chunkManager,
-    worldName,
-    isSkyCastlesMode,
-    isHubMode,
-    db,
-    mode,
-    bakedBlocks,
-    npcs,
-    players,
-    morvaneDead,
-    droppedItems,
-    mobs,
-    minions,
-    pendingPlayerUpdates,
-    pendingBlockUpdates,
-    pendingHits,
-    pendingMobHits,
-    pendingRespawns,
-    globalSplats,
-    pendingSplats,
-    pendingCleanSplats,
-    playerBuffers,
-    mobBuffers,
-    spatialHash,
-    playerHash,
-    state,
-    CELL_SIZE,
-    PLAYER_CELL_SIZE,
-    dayCycleSpeed,
-    hostileMobTypes,
-    getCellKey,
-    broadcastToNearby,
-    spawnMob,
-    isIndestructible,
-    getBlockAt,
-    resetRoom,
-    releaseMobToPool,
+const ctx: import("./GameContext").GameContext = {
+    ioNamespace, chunkManager, worldName, isSkyCastlesMode, isHubMode, db, mode,
+    bakedBlocks, npcs, players, morvaneDead, droppedItems, mobs, minions,
+    pendingPlayerUpdates, pendingBlockUpdates, pendingHits, pendingMobHits, pendingRespawns,
+    globalSplats, pendingSplats, pendingCleanSplats,
+    playerBuffers, mobBuffers, spatialHash, playerHash, state,
+    CELL_SIZE, PLAYER_CELL_SIZE, dayCycleSpeed, hostileMobTypes,
+    getCellKey, broadcastToNearby, spawnMob, isIndestructible, getBlockAt, resetRoom,
+    releaseMobToPool
   };
-
-  const fakeBotId = "fake_afk_bot_247";
-  const fakeRespawn = mode.getRespawnPosition(fakeBotId, {}, chunkManager, bakedBlocks);
-  players[fakeBotId] = {
-    id: fakeBotId,
-    position: {
-      x: fakeRespawn.x,
-      y: fakeRespawn.y,
-      z: fakeRespawn.z,
-    },
-    velocity: { x: 0, y: 0, z: 0 },
-    rotation: {
-      x: 0,
-      y: fakeRespawn.yaw !== undefined ? fakeRespawn.yaw : 0,
-      z: 0,
-    },
-    skinSeed: "smol potato458966327",
-    name: "smol potato458966327",
-    health: 100,
-    maxHealth: 100,
-    defense: 0,
-    isBot: false,
-    isAFKBot: true,
-    isDead: false,
-    heldItem: 521,
-    offHandItem: 0,
-    lastRespawnTime: Date.now(),
-  };
-
+  
   setupSocketHandlers(ctx);
-
-  if (worldName.includes("summerlab")) {
-    const isSolid = (x: number, y: number, z: number) => {
-      return (
-        !!mode.getBlockAt(x, y, z, chunkManager, bakedBlocks) ||
-        (y <= 0 && y >= -10 && x * x + z * z <= (80 + y) * (80 + y))
-      );
-    };
-
-    const normals = [
-      [1, 0, 0],
-      [-1, 0, 0],
-      [0, 1, 0],
-      [0, -1, 0],
-      [0, 0, 1],
-      [0, 0, -1],
-    ];
-    let splatGenCount = 0;
-
-    // Commented out initial default dirt splats render
-    /*
-    for (let y = 30; y >= 0; y--) {
-        for (let x = -40; x <= 40; x++) {
-            for (let z = -40; z <= 40; z++) {
-                if (splatGenCount >= 80000) break;
-                
-                if (isSolid(x, y, z)) {
-                    for (const n of normals) {
-                        const nx = x + n[0];
-                        const ny = y + n[1];
-                        const nz = z + n[2];
-                        if (ny >= 0 && !isSolid(nx, ny, nz)) {
-                            if (splatGenCount >= 80000) break;
-
-                            let uAxis = [0, 1, 0];
-                            let vAxis = [0, 0, 1];
-                            if (Math.abs(n[1]) > 0) {
-                                uAxis = [1, 0, 0];
-                                vAxis = [0, 0, 1];
-                            } else if (Math.abs(n[2]) > 0) {
-                                uAxis = [1, 0, 0];
-                                vAxis = [0, 1, 0];
-                            }
-
-                            for (let u = -0.25; u <= 0.25; u += 0.5) {
-                                for (let v = -0.25; v <= 0.25; v += 0.5) {
-                                    if (splatGenCount >= 80000) break;
-                                    let rx = x + 0.5 + n[0] * 0.51 + uAxis[0] * u + vAxis[0] * v;
-                                    let ry = y + 0.5 + n[1] * 0.51 + uAxis[1] * u + vAxis[1] * v;
-                                    let rz = z + 0.5 + n[2] * 0.51 + uAxis[2] * u + vAxis[2] * v;
-                                    
-                                    const splat = [rx, ry, rz, n[0], n[1], n[2], 0x3d1c04];
-                                    const px = Math.floor(splat[0] * 10);
-                                    const py = Math.floor(splat[1] * 10);
-                                    const pz = Math.floor(splat[2] * 10);
-                                    const key = `${px},${py},${pz}`;
-                                    if (!globalSplats.has(key)) {
-                                        globalSplats.set(key, splat);
-                                        splatGenCount++;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if (splatGenCount >= 80000) break;
-        }
-        if (splatGenCount >= 80000) break;
-    }
-    */
-  }
-
+  
   // Game Reset / End Game state
-  // "playing" | "endgame"
+   // "playing" | "endgame"
+  
+  
+  
+  
+  
+  
 
   function resetRoom() {
     state.gameState = "playing";
@@ -508,31 +355,98 @@ export function createGameServer(
 
     // Clear dictionaries without replacing object references
     for (const key in droppedItems) delete droppedItems[key];
-    for (const key of Object.keys(mobs)) {
-      releaseMobToPool(mobs[key]);
-      delete mobs[key];
-    }
+    for (const key of Object.keys(mobs)) { releaseMobToPool(mobs[key]); delete mobs[key]; }
     mobBuffers.clear();
     for (const key in minions) delete minions[key];
 
     // Clear chunks
     chunkManager.resetWorld();
 
+    globalSplats.clear();
+    pendingSplats.length = 0;
+    pendingCleanSplats.length = 0;
+
     if (mode.onResetRoom) {
       mode.onResetRoom(ctx);
     }
 
-    ioNamespace.emit("entitiesReset", {
-      mobs,
-      droppedItems,
-      gameStartTime: state.gameStartTime,
-    });
+    const isSolid = (x: number, y: number, z: number) => {
+        const type = mode.getBlockAt(x, y, z, chunkManager, bakedBlocks);
+        return !!type && !isWaterBlock(type); // Ignore AIR and WATER
+    };
+    
+    // let splatGenCount = 0;
+    // const normals = [[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1]];
+    // const possibleColors = [0x3d1c04, 0x8b4513, 0xa0522d, 0xcd853f, 0xd2691e, 0xffa500, 0xff8c00];
+
+    // for (let attempts = 0; attempts < 50000 && splatGenCount < 1000; attempts++) {
+    //     const x = Math.floor(Math.random() * 128) - 64;
+    //     const z = Math.floor(Math.random() * 128) - 64;
+    //     const y = Math.floor(Math.random() * 40);
+        
+    //     if (isSolid(x, y, z)) {
+    //         const n = normals[Math.floor(Math.random() * normals.length)];
+    //         const nx = x + n[0];
+    //         const ny = y + n[1];
+    //         const nz = z + n[2];
+            
+    //         const neighborBlock = mode.getBlockAt(nx, ny, nz, chunkManager, bakedBlocks);
+            
+    //         if (ny >= 0 && (!neighborBlock || neighborBlock === 0)) {
+    //             let uAxis = [0, 1, 0];
+    //             let vAxis = [0, 0, 1];
+    //             if (Math.abs(n[1]) > 0) {
+    //                 uAxis = [1, 0, 0];
+    //                 vAxis = [0, 0, 1];
+    //             } else if (Math.abs(n[2]) > 0) {
+    //                 uAxis = [1, 0, 0];
+    //                 vAxis = [0, 1, 0];
+    //             }
+                
+    //             const col = possibleColors[Math.floor(Math.random() * possibleColors.length)];
+                
+    //             // Pick a center point on the face for the cluster
+    //             const centerU = (Math.random() - 0.5) * 0.7;
+    //             const centerV = (Math.random() - 0.5) * 0.7;
+                
+    //             const clusterCount = 5 + Math.floor(Math.random() * 5);
+    //             for (let i = 0; i < clusterCount; i++) {
+    //                 if (splatGenCount >= 1000) break;
+                    
+    //                 // Offset from center, but clamped to face boundaries [-0.5, 0.5]
+    //                 let u = centerU + (Math.random() - 0.5) * 0.5;
+    //                 let v = centerV + (Math.random() - 0.5) * 0.5;
+                    
+    //                 u = Math.max(-0.5, Math.min(0.5, u));
+    //                 v = Math.max(-0.5, Math.min(0.5, v));
+                    
+    //                 let rx = x + 0.5 + n[0] * 0.51 + uAxis[0] * u + vAxis[0] * v;
+    //                 let ry = y + 0.5 + n[1] * 0.51 + uAxis[1] * u + vAxis[1] * v;
+    //                 let rz = z + 0.5 + n[2] * 0.51 + uAxis[2] * u + vAxis[2] * v;
+                    
+    //                 const splat = [rx, ry, rz, n[0], n[1], n[2], col];
+    //                 const px = Math.floor(splat[0] * 5);
+    //                 const py = Math.floor(splat[1] * 5);
+    //                 const pz = Math.floor(splat[2] * 5);
+    //                 const key = `${px},${py},${pz}`;
+                    
+    //                 if (!globalSplats.has(key)) {
+    //                     globalSplats.set(key, splat);
+    //                     splatGenCount++;
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
+    ioNamespace.emit("entitiesReset", { mobs, droppedItems, gameStartTime: state.gameStartTime });
+    ioNamespace.emit("splats", Array.from(globalSplats.values()));
 
     // Re-initialize players
     const oldBlue: string[] = [];
     const oldRed: string[] = [];
     const unassigned: string[] = [];
-
+    
     for (const [id, p] of Object.entries(players)) {
       if (p.team === "blue") oldBlue.push(id);
       else if (p.team === "red") oldRed.push(id);
@@ -551,7 +465,7 @@ export function createGameServer(
     shuffle(unassigned);
 
     const orderedPlayers = [...oldBlue, ...oldRed, ...unassigned];
-
+    
     let bCount = 0;
     let rCount = 0;
 
@@ -620,10 +534,10 @@ export function createGameServer(
   const FIXED_TIME_STEP = 1000 / TICK_RATE;
   let lastTimeMs = performance.now();
   let accumulatorMs = 0;
-
+  
   const tickLoop = () => {
     if (state.isDestroyed) return;
-
+    
     const now = performance.now();
     let frameTime = now - lastTimeMs;
     // Cap frame time to prevent "spiral of death" on severe lag
@@ -631,23 +545,23 @@ export function createGameServer(
       frameTime = 250;
     }
     lastTimeMs = now;
-
+    
     accumulatorMs += frameTime;
-
+    
     // Process as many fixed steps as we have accumulated
     while (accumulatorMs >= FIXED_TIME_STEP) {
       if (state.isDestroyed) break;
-
+      
       try {
         tick(FIXED_TIME_STEP / 1000);
       } catch (err) {
         console.error(`Error in tick for ${mode.name}`, err);
       }
-
+      
       accumulatorMs -= FIXED_TIME_STEP;
     }
   };
-
+  
   // Start the loop and track interval so it stops correctly on destroy
   const tickInterval = setInterval(tickLoop, Math.floor(FIXED_TIME_STEP / 2));
   intervals.push(tickInterval);
@@ -662,6 +576,8 @@ export function createGameServer(
   intervals.push(slowTickInterval);
 
   // Mob Spawning Loop
+  
+  
 
   const doSpawnMobsTick = () => {
     spawnMobsTick(ctx, doSpawnMobsTick);
@@ -678,6 +594,28 @@ export function createGameServer(
         const lz = ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
         const ly = Math.floor(y) - WORLD_Y_OFFSET;
         chunkManager.setBlockInChunk(cx, cz, lx, ly, lz, type);
+        
+        if (type === 0) {
+          const removedKeys: string[] = [];
+          const bx = Math.floor(x);
+          const by = Math.floor(y);
+          const bz = Math.floor(z);
+          for (let sx = bx * 5 - 1; sx <= bx * 5 + 5; sx++) {
+            for (let sy = by * 5 - 1; sy <= by * 5 + 5; sy++) {
+              for (let sz = bz * 5 - 1; sz <= bz * 5 + 5; sz++) {
+                const k = `${sx},${sy},${sz}`;
+                if (globalSplats.has(k)) {
+                  globalSplats.delete(k);
+                  removedKeys.push(k);
+                }
+              }
+            }
+          }
+          if (removedKeys.length > 0) {
+            ioNamespace.emit("cleanSplats", removedKeys);
+          }
+        }
+
         ioNamespace.emit("blockChanged", { x, y, z, type });
       },
       spawnMob: (
@@ -693,44 +631,15 @@ export function createGameServer(
     });
   }
 
-  if (
-    (worldName.startsWith("dungeondelver") ||
-      worldName.startsWith("skycastles")) &&
-    worldName.endsWith("_1")
-  ) {
+  if ((worldName.startsWith("dungeondelver") || worldName.startsWith("skycastles")) && worldName.endsWith("_1")) {
     const BOT_NAMES = [
-      "AdvenBot",
-      "BotSir",
-      "SirBot",
-      "RoboDelver",
-      "DungeonMech",
-      "MechaKnight",
-      "Bot_73",
-      "AutoLooter",
-      "IronClad",
-      "Botus",
-      "CyberDelver",
-      "MechWarrior",
-      "BotO_Mato",
-      "DroidDelver",
-      "Automaton",
-      "GearHead",
-      "Botbert",
-      "RoboPaladin",
-      "Botimus",
-      "MechMage",
-      "Sir_Clanks",
-      "Bot_101",
-      "Droid_X",
-      "RoboRogue",
-      "Bot_Ninja",
-      "Gear_Bot",
-      "Auto_Bot",
-      "Bot_Rex",
-      "Robo_King",
-      "Bot_Queen",
-      "Droid_Lord",
-      "Mech_God",
+      "AdvenBot", "BotSir", "SirBot", "RoboDelver", "DungeonMech",
+      "MechaKnight", "Bot_73", "AutoLooter", "IronClad", "Botus",
+      "CyberDelver", "MechWarrior", "BotO_Mato", "DroidDelver",
+      "Automaton", "GearHead", "Botbert", "RoboPaladin", "Botimus",
+      "MechMage", "Sir_Clanks", "Bot_101", "Droid_X", "RoboRogue",
+      "Bot_Ninja", "Gear_Bot", "Auto_Bot", "Bot_Rex", "Robo_King",
+      "Bot_Queen", "Droid_Lord", "Mech_God"
     ];
 
     const isLavaColumnAt = (x: number, y: number, z: number): boolean => {
@@ -748,33 +657,15 @@ export function createGameServer(
       return false;
     };
 
-    const hasTeams =
-      mode.name.startsWith("/skycastles") || mode.name.startsWith("/skybridge");
+    const hasTeams = mode.name.startsWith("/skycastles") || mode.name.startsWith("/skybridge");
     for (let i = 0; i < 30; i++) {
       const id = "bot_" + Math.random().toString(36).substring(2, 9);
-      const team = hasTeams
-        ? Math.random() < 0.5
-          ? "blue"
-          : "red"
-        : undefined;
-
-      let respawnData = mode.getRespawnPosition(
-        id,
-        { team },
-        chunkManager,
-        bakedBlocks,
-      );
+      const team = hasTeams ? (Math.random() < 0.5 ? "blue" : "red") : undefined;
+      
+      let respawnData = mode.getRespawnPosition(id, { team }, chunkManager, bakedBlocks);
       let retry = 0;
-      while (
-        isLavaColumnAt(respawnData.x, respawnData.y, respawnData.z) &&
-        retry < 50
-      ) {
-        respawnData = mode.getRespawnPosition(
-          id,
-          { team },
-          chunkManager,
-          bakedBlocks,
-        );
+      while (isLavaColumnAt(respawnData.x, respawnData.y, respawnData.z) && retry < 50) {
+        respawnData = mode.getRespawnPosition(id, { team }, chunkManager, bakedBlocks);
         retry++;
       }
       const initialPos = {
@@ -788,12 +679,9 @@ export function createGameServer(
         isBot: true,
         position: initialPos,
         velocity: { x: 0, y: 0, z: 0 },
-        rotation:
-          respawnData.yaw !== undefined
-            ? { x: 0, y: respawnData.yaw, z: 0 }
-            : { x: 0, y: 0, z: 0 },
+        rotation: respawnData.yaw !== undefined ? { x: 0, y: respawnData.yaw, z: 0 } : { x: 0, y: 0, z: 0 },
         skinSeed: id,
-        name: BOT_NAMES[i % BOT_NAMES.length] + Math.floor(Math.random() * 10),
+        name: BOT_NAMES[i % BOT_NAMES.length] + Math.floor(Math.random()*10),
         health: 100,
         maxHealth: 100,
         defense: 0,
@@ -802,15 +690,39 @@ export function createGameServer(
         heldItem: 441, // WOODEN_SWORD
         offHandItem: 0,
         joinTime: Date.now(),
-        lastRespawnTime: Date.now(),
+        lastRespawnTime: Date.now()
       };
     }
+  }
+
+  if (worldName.startsWith("summerlab") && worldName.endsWith("_1")) {
+    const id = "bot_" + Math.random().toString(36).substring(2, 9);
+    let respawnData = mode.getRespawnPosition(id, {}, chunkManager, bakedBlocks);
+    players[id] = {
+      id,
+      isBot: true,
+      position: { x: respawnData.x, y: respawnData.y, z: respawnData.z },
+      velocity: { x: 0, y: 0, z: 0 },
+      rotation: respawnData.yaw !== undefined ? { x: 0, y: respawnData.yaw, z: 0 } : { x: 0, y: 0, z: 0 },
+      skinSeed: "cool_kid_123",
+      name: "smol fish",
+      health: 100,
+      maxHealth: 100,
+      defense: 0,
+      team: undefined,
+      isDead: false,
+      heldItem: 521, // FLUID_CHOCOLATE_HOSE
+      offHandItem: 0,
+      joinTime: Date.now(),
+      lastRespawnTime: Date.now()
+    };
   }
 
   // (Despawn loops moved to unified 10s background task)
 
   // Mob Spawning ticks - wait, that's done with setTimeout.
   // Let's clear the timeouts via a boolean flag
+  
 
   return {
     destroy: () => {
@@ -820,20 +732,16 @@ export function createGameServer(
       ioNamespace.removeAllListeners();
       console.log(`Destroyed instance ${mode.name}`);
     },
-    injectChunk: (cx: number, cz: number, data: ArrayBuffer | Buffer) => {
-      const key = `${cx},${cz}`;
-      chunkManager.dirtyChunks.delete(`${key}#gen`);
-      if (!chunkManager.chunks.has(key)) {
-        const arr =
-          data instanceof ArrayBuffer
-            ? new Uint16Array(data)
-            : new Uint16Array(
-                data.buffer,
-                data.byteOffset,
-                data.byteLength / 2,
-              );
-        chunkManager.chunks.set(key, arr);
-      }
+    injectChunk: (cx: number, cz: number, data: ArrayBuffer | Buffer, epoch?: number) => {
+       if (epoch !== undefined && epoch !== chunkManager.epoch) return;
+       const key = `${cx},${cz}`;
+       chunkManager.dirtyChunks.delete(`${key}#gen`);
+       if (!chunkManager.chunks.has(key)) {
+          const arr = data instanceof ArrayBuffer 
+             ? new Uint16Array(data) 
+             : new Uint16Array(data.buffer, data.byteOffset, data.byteLength / 2);
+          chunkManager.chunks.set(key, arr);
+       }
     },
     isDestroyed: () => state.isDestroyed,
     tick,
