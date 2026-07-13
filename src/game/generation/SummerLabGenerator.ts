@@ -1515,7 +1515,7 @@ export function generateSummerLabColumn(chunk: any, x: number, z: number, worldX
 
   for (let fy = bounds.minY; fy <= bounds.maxY; fy++) {
     const y = fy - (-60);
-    if (y < 0 || y >= 1664) continue;
+    if (y < 0 || y >= CHUNK_HEIGHT) continue;
 
     const baseBlock = getSummerLabBlock(worldX, fy, worldZ);
     if (baseBlock !== 0) { // ItemType.AIR is 0
