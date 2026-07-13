@@ -1,4 +1,5 @@
 import { ItemType } from '../Inventory';
+import { CHUNK_HEIGHT } from '../Chunk';
 
 export function getWaterParkBlock(worldX: number, worldY: number, worldZ: number): number {
   const localY = Math.floor(worldY);
@@ -48,7 +49,7 @@ export function generateWaterParkColumn(chunk: any, x: number, z: number, worldX
 
   for (let fy = -3; fy <= 40; fy++) {
     const worldY = fy - (-60);
-    if (worldY < 0 || worldY >= 384) continue;
+    if (worldY < 0 || worldY >= CHUNK_HEIGHT) continue;
 
     let baseBlock: number = ItemType.AIR;
     // Base Foundations and Pools
